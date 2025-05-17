@@ -5,14 +5,10 @@ import {
   HttpStatus,
 } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
+import { Repository, DeepPartial } from "typeorm";
 import { McpCard } from "./entities/mcpcard.entity";
-import { HttpService } from "@nestjs/axios";
-import { ConfigService } from "@nestjs/config";
-import { CreateMcpCardDto } from "./dto/create-mcpcard.dto";
 import { ImportMcpCardDto } from "./dto/import-mcpcard.dto";
-import { GenerateMcpServerDto } from "./dto/generate-mcp-server.dto";
-import { firstValueFrom } from "rxjs";
+import { GenerateMcpServerDto } from "../mcpserver/dto/generate-mcp-server.dto";
 
 @Injectable()
 export class McpCardService {
@@ -20,30 +16,25 @@ export class McpCardService {
 
   constructor(
     @InjectRepository(McpCard)
-    private McpCardRepository: Repository<McpCard>,
-    httpService: HttpService,
-    private readonly configService: ConfigService
-  ) {
-    // Cast HttpService to any to avoid TypeScript errors
-    this.httpClient = httpService;
-  }
+    private McpCardRepository: Repository<McpCard>
+  ) {}
 
-  async create(createMcpCardDto: CreateMcpCardDto): Promise<McpCard> {
-    const McpCard = this.McpCardRepository.create(createMcpCardDto);
-    return this.McpCardRepository.save(McpCard);
+  async create(createMcpCardDto: DeepPartial<McpCard>): Promise<McpCard> {
+    return this.McpCardRepository.save(
+      this.McpCardRepository.create(createMcpCardDto)
+    );
   }
 
   async findAll(): Promise<McpCard[]> {
     return this.McpCardRepository.find();
   }
 
-
   async findOne(id: number): Promise<McpCard> {
-    const McpCard = await this.McpCardRepository.findOneBy({ id });
-    if (!McpCard) {
+    const result = await this.McpCardRepository.findOneBy({ id });
+    if (!result) {
       throw new NotFoundException(`McpCard with ID ${id} not found`);
     }
-    return McpCard;
+    return result as McpCard;
   }
 
   async import(importMcpCardDto: ImportMcpCardDto): Promise<McpCard> {
@@ -171,120 +162,118 @@ export class McpCardService {
   };
 
   fakeFindOneMcpserver = {
-    "apiVersion": "toolhive.stacklok.dev/v1alpha1",
-    "kind": "MCPServer",
-    "metadata": {
-        "annotations": {
-            "kubectl.kubernetes.io/last-applied-configuration": "{\"apiVersion\":\"toolhive.stacklok.dev/v1alpha1\",\"kind\":\"MCPServer\",\"metadata\":{\"annotations\":{},\"name\":\"wikipedia-fake\",\"namespace\":\"toolhive-system\"},\"spec\":{\"image\":\"docker.io/mcp/wikipedia-mcp:latest\",\"permissionProfile\":{\"name\":\"network\",\"type\":\"builtin\"},\"port\":8080,\"resources\":{\"limits\":{\"cpu\":\"2\",\"memory\":\"4Gi\"},\"requests\":{\"cpu\":\"2\",\"memory\":\"4Gi\"}},\"transport\":\"stdio\"}}\n"
+    apiVersion: "toolhive.stacklok.dev/v1alpha1",
+    kind: "MCPServer",
+    metadata: {
+      annotations: {
+        "kubectl.kubernetes.io/last-applied-configuration":
+          '{"apiVersion":"toolhive.stacklok.dev/v1alpha1","kind":"MCPServer","metadata":{"annotations":{},"name":"wikipedia-fake","namespace":"toolhive-system"},"spec":{"image":"docker.io/mcp/wikipedia-mcp:latest","permissionProfile":{"name":"network","type":"builtin"},"port":8080,"resources":{"limits":{"cpu":"2","memory":"4Gi"},"requests":{"cpu":"2","memory":"4Gi"}},"transport":"stdio"}}\n',
+      },
+      creationTimestamp: "2025-05-17T03:03:56Z",
+      finalizers: ["mcpserver.toolhive.stacklok.dev/finalizer"],
+      generation: 1,
+      managedFields: [
+        {
+          apiVersion: "toolhive.stacklok.dev/v1alpha1",
+          fieldsType: "FieldsV1",
+          fieldsV1: {
+            "f:metadata": {
+              "f:annotations": {
+                ".": {},
+                "f:kubectl.kubernetes.io/last-applied-configuration": {},
+              },
+            },
+            "f:spec": {
+              ".": {},
+              "f:image": {},
+              "f:permissionProfile": {
+                ".": {},
+                "f:name": {},
+                "f:type": {},
+              },
+              "f:port": {},
+              "f:resources": {
+                ".": {},
+                "f:limits": {
+                  ".": {},
+                  "f:cpu": {},
+                  "f:memory": {},
+                },
+                "f:requests": {
+                  ".": {},
+                  "f:cpu": {},
+                  "f:memory": {},
+                },
+              },
+              "f:transport": {},
+            },
+          },
+          manager: "kubectl",
+          operation: "Update",
+          time: "2025-05-17T03:03:56Z",
         },
-        "creationTimestamp": "2025-05-17T03:03:56Z",
-        "finalizers": [
-            "mcpserver.toolhive.stacklok.dev/finalizer"
-        ],
-        "generation": 1,
-        "managedFields": [
-            {
-                "apiVersion": "toolhive.stacklok.dev/v1alpha1",
-                "fieldsType": "FieldsV1",
-                "fieldsV1": {
-                    "f:metadata": {
-                        "f:annotations": {
-                            ".": {},
-                            "f:kubectl.kubernetes.io/last-applied-configuration": {}
-                        }
-                    },
-                    "f:spec": {
-                        ".": {},
-                        "f:image": {},
-                        "f:permissionProfile": {
-                            ".": {},
-                            "f:name": {},
-                            "f:type": {}
-                        },
-                        "f:port": {},
-                        "f:resources": {
-                            ".": {},
-                            "f:limits": {
-                                ".": {},
-                                "f:cpu": {},
-                                "f:memory": {}
-                            },
-                            "f:requests": {
-                                ".": {},
-                                "f:cpu": {},
-                                "f:memory": {}
-                            }
-                        },
-                        "f:transport": {}
-                    }
-                },
-                "manager": "kubectl",
-                "operation": "Update",
-                "time": "2025-05-17T03:03:56Z"
+        {
+          apiVersion: "toolhive.stacklok.dev/v1alpha1",
+          fieldsType: "FieldsV1",
+          fieldsV1: {
+            "f:metadata": {
+              "f:finalizers": {
+                ".": {},
+                'v:"mcpserver.toolhive.stacklok.dev/finalizer"': {},
+              },
             },
-            {
-                "apiVersion": "toolhive.stacklok.dev/v1alpha1",
-                "fieldsType": "FieldsV1",
-                "fieldsV1": {
-                    "f:metadata": {
-                        "f:finalizers": {
-                            ".": {},
-                            "v:\"mcpserver.toolhive.stacklok.dev/finalizer\"": {}
-                        }
-                    }
-                },
-                "manager": "thv-operator",
-                "operation": "Update",
-                "time": "2025-05-17T03:03:56Z"
+          },
+          manager: "thv-operator",
+          operation: "Update",
+          time: "2025-05-17T03:03:56Z",
+        },
+        {
+          apiVersion: "toolhive.stacklok.dev/v1alpha1",
+          fieldsType: "FieldsV1",
+          fieldsV1: {
+            "f:status": {
+              ".": {},
+              "f:message": {},
+              "f:phase": {},
+              "f:url": {},
             },
-            {
-                "apiVersion": "toolhive.stacklok.dev/v1alpha1",
-                "fieldsType": "FieldsV1",
-                "fieldsV1": {
-                    "f:status": {
-                        ".": {},
-                        "f:message": {},
-                        "f:phase": {},
-                        "f:url": {}
-                    }
-                },
-                "manager": "thv-operator",
-                "operation": "Update",
-                "subresource": "status",
-                "time": "2025-05-17T03:04:58Z"
-            }
-        ],
-        "name": "wikipedia-fake3",
-        "namespace": "toolhive-system",
-        "resourceVersion": "1747451098190111007",
-        "uid": "b2026bfa-ffff-408a-a781-d8d730afa5c5"
+          },
+          manager: "thv-operator",
+          operation: "Update",
+          subresource: "status",
+          time: "2025-05-17T03:04:58Z",
+        },
+      ],
+      name: "wikipedia-fake3",
+      namespace: "toolhive-system",
+      resourceVersion: "1747451098190111007",
+      uid: "b2026bfa-ffff-408a-a781-d8d730afa5c5",
     },
-    "spec": {
-        "image": "docker.io/mcp/wikipedia-mcp:latest",
-        "permissionProfile": {
-            "name": "network",
-            "type": "builtin"
+    spec: {
+      image: "docker.io/mcp/wikipedia-mcp:latest",
+      permissionProfile: {
+        name: "network",
+        type: "builtin",
+      },
+      port: 8080,
+      resources: {
+        limits: {
+          cpu: "2",
+          memory: "4Gi",
         },
-        "port": 8080,
-        "resources": {
-            "limits": {
-                "cpu": "2",
-                "memory": "4Gi"
-            },
-            "requests": {
-                "cpu": "2",
-                "memory": "4Gi"
-            }
+        requests: {
+          cpu: "2",
+          memory: "4Gi",
         },
-        "transport": "stdio"
+      },
+      transport: "stdio",
     },
-    "status": {
-        "message": "MCP server is starting",
-        "phase": "Pending",
-        "url": "http://34.80.187.36:8080/sse"
-    }
-}
-
+    status: {
+      message: "MCP server is starting",
+      phase: "Pending",
+      url: "http://34.80.187.36:8080/sse",
+    },
+  };
 
   async generateService(
     generateServiceDto: GenerateMcpServerDto

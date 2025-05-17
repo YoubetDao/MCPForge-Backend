@@ -44,4 +44,3 @@ export class McpCard {
   @UpdateDateColumn()
   updated_at: Date;
 }
-
