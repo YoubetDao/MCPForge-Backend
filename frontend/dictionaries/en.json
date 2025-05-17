@@ -1,0 +1,59 @@
+{
+  "nav": {
+    "explore": "Explore",
+    "chat": "Chat",
+    "playground": "Playground",
+    "ranking": "Ranking",
+    "submit": "Submit",
+    "signIn": "SIGN IN"
+  },
+  "hero": {
+    "title1": "Discover Amazing",
+    "title2": "MCP Servers",
+    "subtitle": "The largest collection of Model Context Protocol servers and clients.",
+    "searchPlaceholder": "SEARCH WITH KEYWORDS",
+    "popular": "POPULAR:"
+  },
+  "categories": {
+    "featured": "FEATURED",
+    "latest": "LATEST",
+    "clients": "CLIENTS",
+    "hosted": "HOSTED",
+    "official": "OFFICIAL",
+    "innovations": "INNOVATIONS"
+  },
+  "sections": {
+    "featuredServers": "FEATURED MCP SERVERS",
+    "viewAll": "VIEW ALL",
+    "sponsors": "SPONSORS",
+    "subscribe": "SUBSCRIBE TO UPDATES",
+    "subscribeText": "Get the latest MCP servers and updates delivered to your inbox.",
+    "yourEmail": "YOUR EMAIL",
+    "subscribe_button": "SUBSCRIBE",
+    "sending": "SENDING...",
+    "thankYou": "THANK YOU FOR SUBSCRIBING!"
+  },
+  "footer": {
+    "resources": "Resources",
+    "documentation": "Documentation",
+    "apiReference": "API Reference",
+    "tutorials": "Tutorials",
+    "community": "Community",
+    "github": "GitHub",
+    "discord": "Discord",
+    "twitter": "Twitter",
+    "legal": "Legal",
+    "privacyPolicy": "Privacy Policy",
+    "termsOfService": "Terms of Service",
+    "cookiePolicy": "Cookie Policy",
+    "allRightsReserved": "All rights reserved."
+  },
+  "auth": {
+    "profile": "Profile",
+    "dashboard": "Dashboard",
+    "settings": "Settings",
+    "signOut": "Sign out",
+    "loading": "LOADING",
+    "createAccount": "Enter your information to create an account on MCP forge"
+  }
+}

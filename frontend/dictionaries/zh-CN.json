@@ -1,0 +1,58 @@
+{
+  "nav": {
+    "explore": "探索",
+    "chat": "聊天",
+    "playground": "试验场",
+    "ranking": "排行榜",
+    "submit": "提交",
+    "signIn": "登录"
+  },
+  "hero": {
+    "title1": "发现精彩",
+    "title2": "MCP 服务器",
+    "subtitle": "最大的模型上下文协议服务器和客户端集合。",
+    "searchPlaceholder": "输入关键词搜索",
+    "popular": "热门:"
+  },
+  "categories": {
+    "featured": "精选",
+    "latest": "最新",
+    "clients": "客户端",
+    "hosted": "托管",
+    "official": "官方",
+    "innovations": "创新"
+  },
+  "sections": {
+    "featuredServers": "精选 MCP 服务器",
+    "viewAll": "查看全部",
+    "sponsors": "赞助商",
+    "subscribe": "订阅更新",
+    "subscribeText": "获取最新的 MCP 服务器和更新直接发送到您的邮箱。",
+    "yourEmail": "您的邮箱",
+    "subscribe_button": "订阅",
+    "sending": "发送中...",
+    "thankYou": "感谢您的订阅！"
+  },
+  "footer": {
+    "resources": "资源",
+    "documentation": "文档",
+    "apiReference": "API 参考",
+    "tutorials": "教程",
+    "community": "社区",
+    "github": "GitHub",
+    "discord": "Discord",
+    "twitter": "Twitter",
+    "legal": "法律",
+    "privacyPolicy": "隐私政策",
+    "termsOfService": "服务条款",
+    "cookiePolicy": "Cookie 政策",
+    "allRightsReserved": "版权所有。"
+  },
+  "auth": {
+    "profile": "个人资料",
+    "dashboard": "控制台",
+    "settings": "设置",
+    "signOut": "退出登录",
+    "loading": "加载中"
+  }
+}
