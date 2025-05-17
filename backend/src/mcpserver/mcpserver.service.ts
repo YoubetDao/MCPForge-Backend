@@ -85,19 +85,29 @@ export class McpServerService {
         }
     }
 
-    private makeDirectRequest(url: string): Promise<any> {
+    private makeDirectRequest(url: string, method: string = 'GET', body?: any): Promise<any> {
         return new Promise((resolve, reject) => {
-            console.log(`Making direct request to: ${url}`);
+            console.log(`Making direct ${method} request to: ${url}`);
             
             const parsedUrl = new URL(url);
             const options = {
                 hostname: parsedUrl.hostname,
                 port: parsedUrl.port || 443,
                 path: `${parsedUrl.pathname}${parsedUrl.search}`,
-                method: 'GET',
+                method: method,
                 rejectUnauthorized: false,
-                headers: this.getK8sHeaders()
+                headers: {
+                    ...this.getK8sHeaders(),
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                }
             };
+            
+            if (body) {
+                const bodyStr = JSON.stringify(body);
+                options.headers['Content-Length'] = Buffer.byteLength(bodyStr);
+                console.log('Request body being sent:', bodyStr);
+            }
             
             console.log('Request options:', JSON.stringify(options, null, 2));
             
@@ -114,10 +124,17 @@ export class McpServerService {
                     console.log('Response data length:', data.length);
                     try {
                         const parsedData = data ? JSON.parse(data) : {};
-                        resolve(parsedData);
+                        console.log('Response data:', JSON.stringify(parsedData, null, 2));
+                        if (res.statusCode >= 400) {
+                            const error = new Error(`HTTP ${res.statusCode}: ${parsedData.message || 'Unknown error'}`);
+                            error['response'] = { data: parsedData };
+                            reject(error);
+                        } else {
+                            resolve(parsedData);
+                        }
                     } catch (e) {
                         console.error('Error parsing JSON:', e.message);
-                        resolve({ raw: data });
+                        reject(e);
                     }
                 });
             });
@@ -126,6 +143,12 @@ export class McpServerService {
                 console.error('Direct request error:', error.message, error.code);
                 reject(error);
             });
+
+            if (body) {
+                const bodyStr = JSON.stringify(body);
+                req.write(bodyStr);
+                console.log('Sent body:', bodyStr);
+            }
             
             req.end();
         });
@@ -223,12 +246,73 @@ export class McpServerService {
     async createMcpServer(name: string, image: string) {
         try {
             const url = `${this.K8S_API_HOST}/apis/${this.K8S_API_GROUP}/${this.K8S_API_VERSION}/namespaces/${this.K8S_NAMESPACE}/${this.K8S_RESOURCE}`;
-            const response = await firstValueFrom(
-                this.httpService.post(url, { image }, this.getHttpConfig())
-            );
-            return response.data;
+            
+            const requestBody = {
+                apiVersion: `${this.K8S_API_GROUP}/${this.K8S_API_VERSION}`,
+                kind: "MCPServer",
+                metadata: {
+                    name,
+                    namespace: this.K8S_NAMESPACE
+                },
+                spec: {
+                    image,
+                    permissionProfile: {
+                        name: "network",
+                        type: "builtin"
+                    },
+                    port: 8080,
+                    resources: {
+                        limits: {
+                            cpu: "2",
+                            memory: "4Gi"
+                        },
+                        requests: {
+                            cpu: "2",
+                            memory: "4Gi"
+                        }
+                    },
+                    transport: "stdio"
+                }
+            };
+            
+            console.log('Request body:', JSON.stringify(requestBody, null, 2));
+            
+            try {
+                const directData = await this.makeDirectRequest(url, 'POST', requestBody);
+                console.log('Direct request succeeded');
+                return directData;
+            } catch (directError) {
+                console.error('Direct request failed:', directError.message);
+                if (directError.response) {
+                    console.error('Error response:', directError.response.data);
+                }
+                
+                // If direct request fails, try the original method
+                const connectionTest = await this.testConnection();
+                console.log('Connection test result:', connectionTest);
+                
+                console.log(`Requesting via HttpService: ${url}`);
+                
+                const config = this.getHttpConfig();
+                console.log('Request config:', JSON.stringify(config, null, 2));
+                
+                const response = await firstValueFrom(
+                    this.httpService.post(url, requestBody, config)
+                );
+                
+                console.log('Response status:', response.status);
+                return response.data;
+            }
         } catch (error) {
-            console.error('K8s API Error:', error.response?.status, error.response?.data || error.message);
+            console.error('All request methods failed:', 
+                error.code, 
+                error.syscall, 
+                error.address, 
+                error.port,
+                error.response?.status,
+                error.response?.data
+            );
+            
             throw new HttpException(
                 `Failed to create server: ${error.message}`,
                 HttpStatus.BAD_GATEWAY

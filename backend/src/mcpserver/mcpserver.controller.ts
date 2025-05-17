@@ -14,10 +14,11 @@ export class McpServerController {
         return this.McpServerService.getMcpServerList();
     }
 
-
-
     @Post()
-    createMcpServer(@Body() name: string, @Body() image: string): Promise<any> {
+    createMcpServer(
+        @Body('name') name: string,
+        @Body('image') image: string
+    ): Promise<any> {
         return this.McpServerService.createMcpServer(name, image);
     }
 
