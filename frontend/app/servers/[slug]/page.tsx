@@ -9,6 +9,7 @@ import Link from "next/link"
 import { Home, Copy, Clock, ServerIcon, PenToolIcon as Tool, MessageSquare, PlayCircle, Loader2 } from "lucide-react"
 import { useEffect, useState } from "react"
 import { getMCPCards } from "@/lib/api"
+import { distributor } from "@/lib/distributor"
 
 // Add Ethereum to the window object type
 declare global {
@@ -31,33 +32,83 @@ export default function ServerDetailPage() {
   const [serverStartError, setServerStartError] = useState<string | null>(null)
 
   const handleTransferEth = async () => {
-    // Reset states
-    setTransactionError(null)
-    setTransactionHash(null)
+    setTransactionError(null);
+    setTransactionHash(null);
+    setIsWalletConnecting(true);
 
-    // Simulate wallet connecting
-    setIsWalletConnecting(true)
+    if (!window.ethereum) {
+      setTransactionError("No Ethereum wallet found. Please install MetaMask.");
+      setIsWalletConnecting(false);
+      return;
+    }
+    // 先切换到 OP Sepolia (chainId: 0xaa37dc)
+    try {
+      await window.ethereum.request({
+        method: "wallet_switchEthereumChain",
+        params: [{ chainId: "0xaa37dc" }],
+      });
+    } catch (switchError: any) {
+      // 如果没有添加该链，则尝试添加
+      if (switchError.code === 4902) {
+        try {
+          await window.ethereum.request({
+            method: "wallet_addEthereumChain",
+            params: [
+              {
+                chainId: "0xaa37dc",
+                chainName: "OP Sepolia",
+                rpcUrls: ["https://sepolia.optimism.io"],
+                nativeCurrency: { name: "ETH", symbol: "ETH", decimals: 18 },
+                blockExplorerUrls: ["https://sepolia-optimism.etherscan.io"],
+              },
+            ],
+          });
+        } catch (addError) {
+          setTransactionError("Failed to add OP Sepolia network to wallet.");
+          setIsWalletConnecting(false);
+          return;
+        }
+      } else {
+        setTransactionError("Failed to switch to OP Sepolia network.");
+        setIsWalletConnecting(false);
+        return;
+      }
+    }
+    // 切换成功后再请求账户授权
+    let accounts;
+    try {
+      accounts = await window.ethereum.request({
+        method: "eth_requestAccounts",
+      });
+    } catch (err) {
+      setTransactionError("Wallet connection rejected.");
+      setIsWalletConnecting(false);
+      return;
+    }
+    const addressFrom = accounts[0];
+    setIsWalletConnecting(false);
+    setIsTransactionPending(true);
+    const id = Math.random().toString(36).substring(2, 15); // random id
 
-    // Simulate connection delay
-    await new Promise((resolve) => setTimeout(resolve, 1500))
-    setIsWalletConnecting(false)
+    // mock github 用户和金额
+    const users = [{ login: "wfnuser" }, { login: "null" }];
+    const amounts = [1, 2];
 
-    // Simulate transaction pending
-    setIsTransactionPending(true)
-
-    // Simulate transaction processing delay
-    await new Promise((resolve) => setTimeout(resolve, 2000))
-
-    // Always simulate success
-    setTransactionHash(
-      "0x" +
-        Array(64)
-          .fill(0)
-          .map(() => Math.floor(Math.random() * 16).toString(16))
-          .join(""),
-    )
-    setIsTransactionPending(false)
-  }
+    const githubIds = users.map((user) => user.login);
+    const [symbol, decimals] = await distributor.getTokenSymbolAndDecimals();
+    const amountsInWei = amounts.map((amount) =>
+      BigInt(Math.floor(amount * 10 ** Number(decimals)))
+    );
+    const totalAmount = amountsInWei.reduce((a, b) => a + b, 0n);
+    const currentAllowance = await distributor.getAllowance(addressFrom);
+    const MIN_ALLOWANCE = BigInt(50) * BigInt(10) ** BigInt(decimals);
+    if (currentAllowance < totalAmount) {
+      await distributor.approveAllowance(MIN_ALLOWANCE * BigInt(10));
+    }
+    const tx = await distributor.createRedPacket(id, githubIds, amountsInWei);
+    setTransactionHash(tx.hash);
+    setIsTransactionPending(false);
+  };
 
   // 模拟加载数据
   useEffect(() => {
@@ -371,34 +422,31 @@ export default function ServerDetailPage() {
 
           {/* Sidebar */}
           <div className="space-y-6">
-            {/* Transfer ETH button */}
-            <Button
-              className="w-full bg-gradient-to-r from-cyan-500 to-pink-500 hover:from-cyan-400 hover:to-pink-400 text-black font-cyberpunk border-0 h-12"
-              onClick={handleTransferEth}
-              disabled={isWalletConnecting || isTransactionPending}
-            >
-              {isWalletConnecting ? (
-                <>
-                  <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                  模拟连接钱包中...
-                </>
-              ) : isTransactionPending ? (
-                <>
-                  <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                  模拟交易处理中...
-                </>
-              ) : transactionHash ? (
-                <>
-                  <PlayCircle className="mr-2 h-5 w-5" />
-                  模拟交易成功
-                </>
-              ) : (
-                <>
-                  <PlayCircle className="mr-2 h-5 w-5" />
-                  模拟转账 0.01 Sepolia ETH
-                </>
-              )}
-            </Button>
+            {/* 支付按钮，仅在未交易成功时显示 */}
+            {!transactionHash && (
+              <Button
+                className="w-full bg-gradient-to-r from-cyan-500 to-pink-500 hover:from-cyan-400 hover:to-pink-400 text-black font-cyberpunk border-0 h-12"
+                onClick={handleTransferEth}
+                disabled={isWalletConnecting || isTransactionPending}
+              >
+                {isWalletConnecting ? (
+                  <>
+                    <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                    连接钱包中...
+                  </>
+                ) : isTransactionPending ? (
+                  <>
+                    <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                    交易处理中...
+                  </>
+                ) : (
+                  <>
+                    <PlayCircle className="mr-2 h-5 w-5" />
+                    支付 MCP 服务托管费用
+                  </>
+                )}
+              </Button>
+            )}
 
             {/* Show transaction error if any */}
             {transactionError && (
@@ -408,7 +456,9 @@ export default function ServerDetailPage() {
             {/* Show transaction hash if available */}
             {transactionHash && (
               <div className="mt-2 text-sm text-green-600 dark:text-green-400">
-                模拟交易哈希: <span className="font-mono break-all">{transactionHash}</span>
+                <a href={`https://optimism-sepolia.blockscout.com/tx/${transactionHash}`} target="_blank" rel="noopener noreferrer">
+                  <span className="font-mono break-all">交易哈希：{transactionHash}</span>
+                </a>
               </div>
             )}
 
@@ -463,6 +513,7 @@ export default function ServerDetailPage() {
                 ) : (
                   <>
                     <ServerIcon className="mr-2 h-5 w-5" />
+                    {/* TODO: 开启 MCP Server 按钮变为 停止 MCP Server，并在停止后考虑清空 transactionHash */}
                     Start a MCP Server
                   </>
                 )}
