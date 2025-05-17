@@ -37,6 +37,7 @@ export class McpCardService {
     return this.McpCardRepository.find();
   }
 
+
   async findOne(id: number): Promise<McpCard> {
     const McpCard = await this.McpCardRepository.findOneBy({ id });
     if (!McpCard) {
@@ -169,6 +170,122 @@ export class McpCardService {
     },
   };
 
+  fakeFindOneMcpserver = {
+    "apiVersion": "toolhive.stacklok.dev/v1alpha1",
+    "kind": "MCPServer",
+    "metadata": {
+        "annotations": {
+            "kubectl.kubernetes.io/last-applied-configuration": "{\"apiVersion\":\"toolhive.stacklok.dev/v1alpha1\",\"kind\":\"MCPServer\",\"metadata\":{\"annotations\":{},\"name\":\"wikipedia-fake\",\"namespace\":\"toolhive-system\"},\"spec\":{\"image\":\"docker.io/mcp/wikipedia-mcp:latest\",\"permissionProfile\":{\"name\":\"network\",\"type\":\"builtin\"},\"port\":8080,\"resources\":{\"limits\":{\"cpu\":\"2\",\"memory\":\"4Gi\"},\"requests\":{\"cpu\":\"2\",\"memory\":\"4Gi\"}},\"transport\":\"stdio\"}}\n"
+        },
+        "creationTimestamp": "2025-05-17T03:03:56Z",
+        "finalizers": [
+            "mcpserver.toolhive.stacklok.dev/finalizer"
+        ],
+        "generation": 1,
+        "managedFields": [
+            {
+                "apiVersion": "toolhive.stacklok.dev/v1alpha1",
+                "fieldsType": "FieldsV1",
+                "fieldsV1": {
+                    "f:metadata": {
+                        "f:annotations": {
+                            ".": {},
+                            "f:kubectl.kubernetes.io/last-applied-configuration": {}
+                        }
+                    },
+                    "f:spec": {
+                        ".": {},
+                        "f:image": {},
+                        "f:permissionProfile": {
+                            ".": {},
+                            "f:name": {},
+                            "f:type": {}
+                        },
+                        "f:port": {},
+                        "f:resources": {
+                            ".": {},
+                            "f:limits": {
+                                ".": {},
+                                "f:cpu": {},
+                                "f:memory": {}
+                            },
+                            "f:requests": {
+                                ".": {},
+                                "f:cpu": {},
+                                "f:memory": {}
+                            }
+                        },
+                        "f:transport": {}
+                    }
+                },
+                "manager": "kubectl",
+                "operation": "Update",
+                "time": "2025-05-17T03:03:56Z"
+            },
+            {
+                "apiVersion": "toolhive.stacklok.dev/v1alpha1",
+                "fieldsType": "FieldsV1",
+                "fieldsV1": {
+                    "f:metadata": {
+                        "f:finalizers": {
+                            ".": {},
+                            "v:\"mcpserver.toolhive.stacklok.dev/finalizer\"": {}
+                        }
+                    }
+                },
+                "manager": "thv-operator",
+                "operation": "Update",
+                "time": "2025-05-17T03:03:56Z"
+            },
+            {
+                "apiVersion": "toolhive.stacklok.dev/v1alpha1",
+                "fieldsType": "FieldsV1",
+                "fieldsV1": {
+                    "f:status": {
+                        ".": {},
+                        "f:message": {},
+                        "f:phase": {},
+                        "f:url": {}
+                    }
+                },
+                "manager": "thv-operator",
+                "operation": "Update",
+                "subresource": "status",
+                "time": "2025-05-17T03:04:58Z"
+            }
+        ],
+        "name": "wikipedia-fake3",
+        "namespace": "toolhive-system",
+        "resourceVersion": "1747451098190111007",
+        "uid": "b2026bfa-ffff-408a-a781-d8d730afa5c5"
+    },
+    "spec": {
+        "image": "docker.io/mcp/wikipedia-mcp:latest",
+        "permissionProfile": {
+            "name": "network",
+            "type": "builtin"
+        },
+        "port": 8080,
+        "resources": {
+            "limits": {
+                "cpu": "2",
+                "memory": "4Gi"
+            },
+            "requests": {
+                "cpu": "2",
+                "memory": "4Gi"
+            }
+        },
+        "transport": "stdio"
+    },
+    "status": {
+        "message": "MCP server is starting",
+        "phase": "Pending",
+        "url": "http://34.80.187.36:8080/sse"
+    }
+}
+
+
   async generateService(
     generateServiceDto: GenerateMcpServerDto
   ): Promise<Record<string, any>> {
@@ -184,5 +301,9 @@ export class McpCardService {
         HttpStatus.INTERNAL_SERVER_ERROR
       );
     }
+  }
+
+  async getMcpServerByName(name: string): Promise<Record<string, any>> {
+    return this.fakeFindOneMcpserver;
   }
 }

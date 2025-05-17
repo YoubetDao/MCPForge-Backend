@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Param } from "@nestjs/common";
+import { Controller, Get, Post, Body, Param, Query } from "@nestjs/common";
 import { McpCardService } from "./mcpcard.service";
 import { CreateMcpCardDto } from "./dto/create-mcpcard.dto";
 import { ImportMcpCardDto } from "./dto/import-mcpcard.dto";
@@ -18,7 +18,10 @@ export class McpCardController {
   import(@Body() importMcpCardDto: ImportMcpCardDto): Promise<McpCard> {
     return this.McpCardService.import(importMcpCardDto);
   }
-
+  @Get("get-mcp-server-by-name")
+  getMcpServerByName(@Query("name") name: string): Promise<Record<string, any>> {
+    return this.McpCardService.getMcpServerByName(name);
+  }
   @Get()
   findAll(): Promise<McpCard[]> {
     return this.McpCardService.findAll();
@@ -35,4 +38,6 @@ export class McpCardController {
   ): Promise<Record<string, any>> {
     return this.McpCardService.generateService(generateMcpServerDto);
   }
+
+
 }
