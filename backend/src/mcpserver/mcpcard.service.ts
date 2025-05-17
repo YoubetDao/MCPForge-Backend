@@ -172,8 +172,8 @@ export class McpCardService {
     generateServiceDto: GenerateMcpServerDto
   ): Promise<Record<string, any>> {
     try {
-      const { McpCard_id, user_id, config } = generateServiceDto;
-      const McpCard = await this.findOne(McpCard_id);
+      // const { McpCard_id, user_id, config } = generateServiceDto;
+      // const McpCard = await this.findOne(McpCard_id);
 
       // Return fake data instead of making actual API call
       return this.fakeMcpGenerateData;
