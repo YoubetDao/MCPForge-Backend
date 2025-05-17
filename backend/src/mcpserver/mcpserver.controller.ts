@@ -17,9 +17,10 @@ export class McpServerController {
     @Post()
     createMcpServer(
         @Body('name') name: string,
-        @Body('image') image: string
+        @Body('image') image: string,
+        @Body('env') env: object
     ): Promise<any> {
-        return this.McpServerService.createMcpServer(name, image);
+        return this.McpServerService.createMcpServer(name, image, env);
     }
 
     @Delete(":name")
