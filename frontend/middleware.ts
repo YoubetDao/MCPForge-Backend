@@ -1,33 +1,35 @@
-import { NextResponse } from "next/server"
-import { getToken } from "next-auth/jwt"
-import type { NextRequest } from "next/server"
+import { NextResponse } from "next/server";
+import { getToken } from "next-auth/jwt";
+import type { NextRequest } from "next/server";
 
 // Add protected routes here
-const protectedRoutes = ["/profile", "/dashboard", "/settings", "/submit"]
+const protectedRoutes = ["/profile", "/dashboard", "/settings"];
 
 export async function middleware(request: NextRequest) {
-  const pathname = request.nextUrl.pathname
+  const pathname = request.nextUrl.pathname;
 
   // 移除语言重定向逻辑，只保留身份验证检查
 
   // Check if the path is a protected route
-  const isProtectedRoute = protectedRoutes.some((route) => pathname.startsWith(route))
+  const isProtectedRoute = protectedRoutes.some((route) =>
+    pathname.startsWith(route)
+  );
 
   if (isProtectedRoute) {
     const token = await getToken({
       req: request,
       secret: process.env.NEXTAUTH_SECRET,
-    })
+    });
 
     // If the user is not authenticated, redirect to the sign-in page
     if (!token) {
-      const url = new URL(`/auth/signin`, request.url)
-      url.searchParams.set("callbackUrl", pathname)
-      return NextResponse.redirect(url)
+      const url = new URL(`/auth/signin`, request.url);
+      url.searchParams.set("callbackUrl", pathname);
+      return NextResponse.redirect(url);
     }
   }
 
-  return NextResponse.next()
+  return NextResponse.next();
 }
 
 export const config = {
@@ -42,4 +44,4 @@ export const config = {
      */
     "/((?!api/auth|_next/static|_next/image|favicon.ico|public).*)",
   ],
-}
+};

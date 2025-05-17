@@ -1,171 +1,124 @@
-"use client"
+"use client";
 
-import type React from "react"
-import { useState } from "react"
-import { useRouter } from "next/navigation"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Label } from "@/components/ui/label"
-import { Alert, AlertDescription } from "@/components/ui/alert"
-import { AlertCircle, CheckCircle } from "lucide-react"
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { toast } from "@/components/ui/use-toast";
 
-interface SubmitFormProps {
-  userId?: string
-}
-
-export default function SubmitForm({ userId }: SubmitFormProps) {
-  const router = useRouter()
-
-  const [formData, setFormData] = useState({
-    title: "",
-    description: "",
-    url: "",
-    category: "server", // default category
-  })
-
-  const [error, setError] = useState("")
-  const [success, setSuccess] = useState(false)
-  const [isLoading, setIsLoading] = useState(false)
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-    const { name, value } = e.target
-    setFormData((prev) => ({ ...prev, [name]: value }))
-  }
+export default function SubmitForm() {
+  const [githubUrl, setGithubUrl] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const router = useRouter();
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setIsLoading(true)
-    setError("")
-    setSuccess(false)
+    e.preventDefault();
+
+    if (!githubUrl) {
+      toast({
+        title: "请输入GitHub仓库地址",
+        variant: "destructive",
+      });
+      return;
+    }
 
     try {
-      // 提交服务器数据
-      const response = await fetch("/api/servers", {
+      setIsLoading(true);
+      const baseUrl =
+        process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:5190";
+
+      const response = await fetch(`${baseUrl}/mcpcard/import`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          "Cache-Control": "no-cache",
         },
-        body: JSON.stringify({
-          ...formData,
-          userId,
-        }),
-      })
+        credentials: "omit",
+        body: JSON.stringify({ github: githubUrl }),
+      });
+
+      const data = await response.json();
+
+      if (response.status === 201) {
+        toast({
+          title: "Successfully submitted",
+          description: `Successfully imported ${data.name || "MCP Server"}`,
+        });
+
+        setGithubUrl("");
+        setTimeout(() => {
+          router.push("/");
+        }, 1500);
+        return;
+      }
 
       if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.message || "Failed to submit server")
+        throw new Error(data.message || "Submit failed");
       }
 
-      setSuccess(true)
-      setFormData({
-        title: "",
-        description: "",
-        url: "",
-        category: "server",
-      })
+      toast({
+        title: "Submit successfully",
+        description: `Successfully imported ${data.name || "MCP Server"}`,
+      });
 
-      // Redirect after a short delay
-      setTimeout(() => {
-        router.push("/")
-      }, 2000)
+      setGithubUrl("");
     } catch (error) {
-      if (error instanceof Error) {
-        setError(error.message)
-      } else {
-        setError("Failed to submit server. Please try again.")
-      }
+      toast({
+        title: "Submit failed",
+        description:
+          error instanceof Error
+            ? error.message
+            : "Failed to connect to server",
+        variant: "destructive",
+      });
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }
+  };
 
   return (
-    <Card className="max-w-2xl mx-auto">
+    <Card className="max-w-lg mx-auto">
       <CardHeader>
-        <CardTitle>Submit a New MCP Server</CardTitle>
+        <CardTitle>Submit MCP Server</CardTitle>
         <CardDescription>
-          Share your MCP server with the MCP forge community. Please provide accurate information.
+          Please enter the GitHub repository address to import MCP Server
         </CardDescription>
       </CardHeader>
-      <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-6">
-          {error && (
-            <Alert variant="destructive">
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>{error}</AlertDescription>
-            </Alert>
-          )}
-
-          {success && (
-            <Alert className="bg-green-50 text-green-800 border-green-200">
-              <CheckCircle className="h-4 w-4 text-green-600" />
-              <AlertDescription>Server submitted successfully!</AlertDescription>
-            </Alert>
-          )}
-
-          <div className="space-y-2">
-            <Label htmlFor="title">Server Name</Label>
-            <Input
-              id="title"
-              name="title"
-              value={formData.title}
-              onChange={handleChange}
-              placeholder="e.g., GitHub MCP"
-              required
-            />
+      <form onSubmit={handleSubmit}>
+        <CardContent>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <label
+                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                htmlFor="github-url"
+              >
+                GitHub Repository Address
+              </label>
+              <Input
+                id="github-url"
+                placeholder="For example: https://github.com/username/repo"
+                value={githubUrl}
+                onChange={(e) => setGithubUrl(e.target.value)}
+                disabled={isLoading}
+                className="w-full"
+              />
+            </div>
           </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="description">Description</Label>
-            <Textarea
-              id="description"
-              name="description"
-              value={formData.description}
-              onChange={handleChange}
-              placeholder="Describe what your MCP server does..."
-              rows={4}
-              required
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="url">Server URL</Label>
-            <Input
-              id="url"
-              name="url"
-              type="url"
-              value={formData.url}
-              onChange={handleChange}
-              placeholder="https://example.com/mcp"
-              required
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="category">Category</Label>
-            <select
-              id="category"
-              name="category"
-              value={formData.category}
-              onChange={handleChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-orange-500 focus:border-orange-500"
-              required
-            >
-              <option value="server">Server</option>
-              <option value="client">Client</option>
-              <option value="hosted">Hosted</option>
-              <option value="official">Official</option>
-              <option value="innovation">Innovation</option>
-            </select>
-          </div>
-
-          <Button type="submit" className="w-full bg-orange-600 hover:bg-orange-700" disabled={isLoading}>
-            {isLoading ? "Submitting..." : "Submit Server"}
+        </CardContent>
+        <CardFooter>
+          <Button type="submit" disabled={isLoading} className="w-full">
+            {isLoading ? "Submitting..." : "Submit"}
           </Button>
-        </form>
-      </CardContent>
+        </CardFooter>
+      </form>
     </Card>
-  )
+  );
 }
