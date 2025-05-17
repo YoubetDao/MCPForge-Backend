@@ -5,16 +5,16 @@ import { K8sResponse } from "./interfaces/k8s.interface";
 @Controller("mcpserver")
 export class McpServerController {
     constructor(private readonly McpServerService: McpServerService) { }
-
-    @Get()
-    getMcpServerList(): Promise<K8sResponse> {    
-        return this.McpServerService.getMcpServerList();
-    }
-
     @Get(":name")
     getMcpServerByName(@Param("name") name: string): Promise<any> {
         return this.McpServerService.getMcpServerByName(name);
     }
+    @Get()
+    getMcpServerList(): Promise<K8sResponse> {
+        return this.McpServerService.getMcpServerList();
+    }
+
+
 
     @Post()
     createMcpServer(@Body() name: string, @Body() image: string): Promise<any> {
