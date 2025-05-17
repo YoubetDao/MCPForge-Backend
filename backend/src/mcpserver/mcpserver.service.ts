@@ -323,12 +323,43 @@ export class McpServerService {
     async deleteMcpServer(name: string) {
         try {
             const url = `${this.K8S_API_HOST}/apis/${this.K8S_API_GROUP}/${this.K8S_API_VERSION}/namespaces/${this.K8S_NAMESPACE}/${this.K8S_RESOURCE}/${name}`;
-            const response = await firstValueFrom(
-                this.httpService.delete(url, this.getHttpConfig())
-            );
-            return response.data;
+            
+            try {
+                const directData = await this.makeDirectRequest(url, 'DELETE');
+                console.log('Direct request succeeded');
+                return directData;
+            } catch (directError) {
+                console.error('Direct request failed:', directError.message);
+                if (directError.response) {
+                    console.error('Error response:', directError.response.data);
+                }
+                
+                // If direct request fails, try the original method
+                const connectionTest = await this.testConnection();
+                console.log('Connection test result:', connectionTest);
+                
+                console.log(`Requesting via HttpService: ${url}`);
+                
+                const config = this.getHttpConfig();
+                console.log('Request config:', JSON.stringify(config, null, 2));
+                
+                const response = await firstValueFrom(
+                    this.httpService.delete(url, config)
+                );
+                
+                console.log('Response status:', response.status);
+                return response.data;
+            }
         } catch (error) {
-            console.error('K8s API Error:', error.response?.status, error.response?.data || error.message);
+            console.error('All request methods failed:', 
+                error.code, 
+                error.syscall, 
+                error.address, 
+                error.port,
+                error.response?.status,
+                error.response?.data
+            );
+            
             throw new HttpException(
                 `Failed to delete server: ${error.message}`,
                 HttpStatus.BAD_GATEWAY
