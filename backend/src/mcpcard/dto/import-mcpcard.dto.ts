@@ -1,3 +1,3 @@
 export class ImportMcpCardDto {
-  github_url: string;
+  github: string;
 }

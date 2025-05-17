@@ -14,8 +14,14 @@ export class McpCard {
   @Column({ nullable: true })
   name: string;
 
+  @Column({ type: "json", nullable: true })
+  tags: string[];
+
   @Column()
   github_url: string;
+
+  @Column({ nullable: true })
+  author: string;
 
   @Column({ nullable: true })
   description: string;
@@ -23,8 +29,8 @@ export class McpCard {
   @Column({ nullable: true, type: "text" })
   overview: string;
 
-  @Column({ type: "json", nullable: true })
-  tools: object;
+  @Column({ type: "text", nullable: true })
+  tools: string;
 
   @Column({ type: "decimal", precision: 10, scale: 2, nullable: true })
   price: number;
@@ -34,9 +40,6 @@ export class McpCard {
 
   @Column({ nullable: true })
   docker_image: string;
-
-  @Column({ type: "json", nullable: true })
-  mcp_servers: string[];
 
   @CreateDateColumn()
   created_at: Date;

@@ -8,6 +8,7 @@ import { InjectRepository } from "@nestjs/typeorm";
 import { Repository, DeepPartial } from "typeorm";
 import { McpCard } from "./entities/mcpcard.entity";
 import { ImportMcpCardDto } from "./dto/import-mcpcard.dto";
+import { ConfigService } from "@nestjs/config";
 
 @Injectable()
 export class McpCardService {
@@ -15,7 +16,8 @@ export class McpCardService {
 
   constructor(
     @InjectRepository(McpCard)
-    private McpCardRepository: Repository<McpCard>
+    private McpCardRepository: Repository<McpCard>,
+    private configService: ConfigService
   ) {}
 
   async create(createMcpCardDto: DeepPartial<McpCard>): Promise<McpCard> {
@@ -39,10 +41,51 @@ export class McpCardService {
   async import(importMcpCardDto: ImportMcpCardDto): Promise<McpCard> {
     try {
       // Normalize GitHub URL
-      const githubUrl = this.normalizeGithubUrl(importMcpCardDto.github_url);
+      const githubUrl = this.normalizeGithubUrl(importMcpCardDto.github);
+
+      // Get the Deepflow service URL from environment
+      const deepflowServiceUrl = this.configService.get<string>(
+        "DEEPFLOW_SERVICE_URL"
+      );
+      if (!deepflowServiceUrl) {
+        throw new Error("DEEPFLOW_SERVICE_URL is not configured");
+      }
+
+      // Call Deepflow API to get MCP server details
+      const response = await fetch(`${deepflowServiceUrl}/v1/mcp/import`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ github: githubUrl }),
+      });
+
+      if (!response.ok) {
+        throw new Error(
+          `Deepflow API returned ${response.status}: ${response.statusText}`
+        );
+      }
+
+      const data = await response.json();
+
+      if (!data.success || !data.mcpServerContent) {
+        throw new Error("Failed to get MCP server content from Deepflow");
+      }
+
+      const serverContent = data.mcpServerContent;
+
+      // Create a new McpCard with the data from Deepflow
       return this.create({
-        name: this.extractRepoName(githubUrl),
+        name: serverContent.name,
+        author: serverContent.author,
         github_url: githubUrl,
+        tags: serverContent.tags,
+        description: serverContent.description,
+        overview: serverContent.overview,
+        tools: serverContent.tools
+          ? JSON.stringify(serverContent.tools)
+          : undefined,
+        docker_image: serverContent.dockerImage,
       });
     } catch (error) {
       throw new HttpException(
@@ -82,195 +125,4 @@ export class McpCardService {
     const match = githubUrl.match(/github\.com\/[^/]+\/([^/]+)/);
     return match ? match[1] : "Unknown Repository";
   }
-
-  private readonly fakeMcpGenerateData = {
-    apiVersion: "toolhive.stacklok.dev/v1alpha1",
-    kind: "MCPServer",
-    metadata: {
-      annotations: {
-        "kubectl.kubernetes.io/last-applied-configuration":
-          '{"apiVersion":"toolhive.stacklok.dev/v1alpha1","kind":"MCPServer","metadata":{"annotations":{},"name":"wikipedia-fake","namespace":"toolhive-system"},"spec":{"image":"docker.io/mcp/wikipedia-mcp:latest","permissionProfile":{"name":"network","type":"builtin"},"port":8080,"resources":{"limits":{"cpu":"2","memory":"4Gi"},"requests":{"cpu":"2","memory":"4Gi"}},"transport":"stdio"}}\n',
-      },
-      creationTimestamp: "2025-05-17T03:03:56Z",
-      generation: 1,
-      managedFields: [
-        {
-          apiVersion: "toolhive.stacklok.dev/v1alpha1",
-          fieldsType: "FieldsV1",
-          fieldsV1: {
-            "f:metadata": {
-              "f:annotations": {
-                ".": {},
-                "f:kubectl.kubernetes.io/last-applied-configuration": {},
-              },
-            },
-            "f:spec": {
-              ".": {},
-              "f:image": {},
-              "f:permissionProfile": {
-                ".": {},
-                "f:name": {},
-                "f:type": {},
-              },
-              "f:port": {},
-              "f:resources": {
-                ".": {},
-                "f:limits": {
-                  ".": {},
-                  "f:cpu": {},
-                  "f:memory": {},
-                },
-                "f:requests": {
-                  ".": {},
-                  "f:cpu": {},
-                  "f:memory": {},
-                },
-              },
-              "f:transport": {},
-            },
-          },
-          manager: "kubectl",
-          operation: "Update",
-          time: "2025-05-17T03:03:56Z",
-        },
-      ],
-      name: "wikipedia-fake3",
-      namespace: "toolhive-system",
-      resourceVersion: "1747451036751071007",
-      uid: "b2026bfa-ffff-408a-a781-d8d730afa5c5",
-    },
-    spec: {
-      image: "docker.io/mcp/wikipedia-mcp:latest",
-      permissionProfile: {
-        name: "network",
-        type: "builtin",
-      },
-      port: 8080,
-      resources: {
-        limits: {
-          cpu: "2",
-          memory: "4Gi",
-        },
-        requests: {
-          cpu: "2",
-          memory: "4Gi",
-        },
-      },
-      transport: "stdio",
-    },
-  };
-
-  fakeFindOneMcpserver = {
-    apiVersion: "toolhive.stacklok.dev/v1alpha1",
-    kind: "MCPServer",
-    metadata: {
-      annotations: {
-        "kubectl.kubernetes.io/last-applied-configuration":
-          '{"apiVersion":"toolhive.stacklok.dev/v1alpha1","kind":"MCPServer","metadata":{"annotations":{},"name":"wikipedia-fake","namespace":"toolhive-system"},"spec":{"image":"docker.io/mcp/wikipedia-mcp:latest","permissionProfile":{"name":"network","type":"builtin"},"port":8080,"resources":{"limits":{"cpu":"2","memory":"4Gi"},"requests":{"cpu":"2","memory":"4Gi"}},"transport":"stdio"}}\n',
-      },
-      creationTimestamp: "2025-05-17T03:03:56Z",
-      finalizers: ["mcpserver.toolhive.stacklok.dev/finalizer"],
-      generation: 1,
-      managedFields: [
-        {
-          apiVersion: "toolhive.stacklok.dev/v1alpha1",
-          fieldsType: "FieldsV1",
-          fieldsV1: {
-            "f:metadata": {
-              "f:annotations": {
-                ".": {},
-                "f:kubectl.kubernetes.io/last-applied-configuration": {},
-              },
-            },
-            "f:spec": {
-              ".": {},
-              "f:image": {},
-              "f:permissionProfile": {
-                ".": {},
-                "f:name": {},
-                "f:type": {},
-              },
-              "f:port": {},
-              "f:resources": {
-                ".": {},
-                "f:limits": {
-                  ".": {},
-                  "f:cpu": {},
-                  "f:memory": {},
-                },
-                "f:requests": {
-                  ".": {},
-                  "f:cpu": {},
-                  "f:memory": {},
-                },
-              },
-              "f:transport": {},
-            },
-          },
-          manager: "kubectl",
-          operation: "Update",
-          time: "2025-05-17T03:03:56Z",
-        },
-        {
-          apiVersion: "toolhive.stacklok.dev/v1alpha1",
-          fieldsType: "FieldsV1",
-          fieldsV1: {
-            "f:metadata": {
-              "f:finalizers": {
-                ".": {},
-                'v:"mcpserver.toolhive.stacklok.dev/finalizer"': {},
-              },
-            },
-          },
-          manager: "thv-operator",
-          operation: "Update",
-          time: "2025-05-17T03:03:56Z",
-        },
-        {
-          apiVersion: "toolhive.stacklok.dev/v1alpha1",
-          fieldsType: "FieldsV1",
-          fieldsV1: {
-            "f:status": {
-              ".": {},
-              "f:message": {},
-              "f:phase": {},
-              "f:url": {},
-            },
-          },
-          manager: "thv-operator",
-          operation: "Update",
-          subresource: "status",
-          time: "2025-05-17T03:04:58Z",
-        },
-      ],
-      name: "wikipedia-fake3",
-      namespace: "toolhive-system",
-      resourceVersion: "1747451098190111007",
-      uid: "b2026bfa-ffff-408a-a781-d8d730afa5c5",
-    },
-    spec: {
-      image: "docker.io/mcp/wikipedia-mcp:latest",
-      permissionProfile: {
-        name: "network",
-        type: "builtin",
-      },
-      port: 8080,
-      resources: {
-        limits: {
-          cpu: "2",
-          memory: "4Gi",
-        },
-        requests: {
-          cpu: "2",
-          memory: "4Gi",
-        },
-      },
-      transport: "stdio",
-    },
-    status: {
-      message: "MCP server is starting",
-      phase: "Pending",
-      url: "http://34.80.187.36:8080/sse",
-    },
-  };
 }

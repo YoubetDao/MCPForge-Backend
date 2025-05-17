@@ -3,7 +3,7 @@ version: '3.9'
 services:
   postgres:
     image: postgres
-    container_name: mcphub-postgres
+    container_name: mcp-postgres
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
