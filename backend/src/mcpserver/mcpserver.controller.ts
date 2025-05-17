@@ -1,6 +1,7 @@
-import { Controller, Get, Post, Body, Param, Query, Delete } from "@nestjs/common";
+import { Controller, Get, Post, Body, Param, Query, Delete, Req } from "@nestjs/common";
 import { McpServerService } from "./mcpserver.service";
 import { K8sResponse } from "./interfaces/k8s.interface";
+import { Request } from 'express';
 
 @Controller("mcpserver")
 export class McpServerController {
@@ -10,17 +11,21 @@ export class McpServerController {
         return this.McpServerService.getMcpServerByName(name);
     }
     @Get()
-    getMcpServerList(): Promise<K8sResponse> {
-        return this.McpServerService.getMcpServerList();
+    getMcpServerList(@Req() req: Request): Promise<K8sResponse> {
+        // any query params
+        const queryParams = req.query;
+        return this.McpServerService.getMcpServerList(queryParams);
     }
 
     @Post()
     createMcpServer(
         @Body('name') name: string,
         @Body('image') image: string,
-        @Body('env') env: object
+        @Body('env') env: object,
+        @Body('labels') labels: object = {},
+        @Body('annotations') annotations: object = {}
     ): Promise<any> {
-        return this.McpServerService.createMcpServer(name, image, env);
+        return this.McpServerService.createMcpServer(name, image, env, labels, annotations);
     }
 
     @Delete(":name")

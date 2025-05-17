@@ -14,6 +14,7 @@ import { K8sResponse } from "./interfaces/k8s.interface";
 import * as https from 'https';
 import * as http from 'http';
 import { URL } from 'url';
+import { ParsedQs } from 'qs';
 
 @Injectable()
 export class McpServerService {
@@ -154,11 +155,13 @@ export class McpServerService {
         });
     }
 
-    async getMcpServerList() {
+    async getMcpServerList(queryParams: ParsedQs) {
         try {
             // 尝试使用直接的HTTPS请求
-            const url = `${this.K8S_API_HOST}/apis/${this.K8S_API_GROUP}/${this.K8S_API_VERSION}/namespaces/${this.K8S_NAMESPACE}/${this.K8S_RESOURCE}?limit=500`;
-            
+            // convert queryParams to labelSelector
+            const labelSelector = Object.entries(queryParams).map(([key, value]) => `${key}=${value}`).join(',');
+            console.log("labelSelector value as:", labelSelector);
+            const url = `${this.K8S_API_HOST}/apis/${this.K8S_API_GROUP}/${this.K8S_API_VERSION}/namespaces/${this.K8S_NAMESPACE}/${this.K8S_RESOURCE}?limit=500&labelSelector=${labelSelector}`;
             try {
                 const directData = await this.makeDirectRequest(url);
                 console.log('Direct request succeeded');
@@ -243,7 +246,7 @@ export class McpServerService {
         }
     }
 
-    async createMcpServer(name: string, image: string, envs: object) {
+    async createMcpServer(name: string, image: string, envs: object, labels: object, annotations: object) {
         try {
             const url = `${this.K8S_API_HOST}/apis/${this.K8S_API_GROUP}/${this.K8S_API_VERSION}/namespaces/${this.K8S_NAMESPACE}/${this.K8S_RESOURCE}`;
             const envArray = Object.entries(envs).map(([key, value]) => ({
@@ -255,7 +258,9 @@ export class McpServerService {
                 kind: "MCPServer",
                 metadata: {
                     name,
-                    namespace: this.K8S_NAMESPACE
+                    namespace: this.K8S_NAMESPACE,
+                    labels,
+                    annotations
                 },
                 spec: {
                     image,
