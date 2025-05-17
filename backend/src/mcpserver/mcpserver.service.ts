@@ -243,10 +243,13 @@ export class McpServerService {
         }
     }
 
-    async createMcpServer(name: string, image: string) {
+    async createMcpServer(name: string, image: string, envs: object) {
         try {
             const url = `${this.K8S_API_HOST}/apis/${this.K8S_API_GROUP}/${this.K8S_API_VERSION}/namespaces/${this.K8S_NAMESPACE}/${this.K8S_RESOURCE}`;
-            
+            const envArray = Object.entries(envs).map(([key, value]) => ({
+                name: key,
+                value: value
+            }));
             const requestBody = {
                 apiVersion: `${this.K8S_API_GROUP}/${this.K8S_API_VERSION}`,
                 kind: "MCPServer",
@@ -260,6 +263,7 @@ export class McpServerService {
                         name: "network",
                         type: "builtin"
                     },
+                    env: envArray,
                     port: 8080,
                     resources: {
                         limits: {
