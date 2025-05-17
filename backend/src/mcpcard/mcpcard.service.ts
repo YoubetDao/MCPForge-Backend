@@ -8,7 +8,6 @@ import { InjectRepository } from "@nestjs/typeorm";
 import { Repository, DeepPartial } from "typeorm";
 import { McpCard } from "./entities/mcpcard.entity";
 import { ImportMcpCardDto } from "./dto/import-mcpcard.dto";
-import { GenerateMcpServerDto } from "../mcpserver/dto/generate-mcp-server.dto";
 
 @Injectable()
 export class McpCardService {
@@ -274,25 +273,4 @@ export class McpCardService {
       url: "http://34.80.187.36:8080/sse",
     },
   };
-
-  async generateService(
-    generateServiceDto: GenerateMcpServerDto
-  ): Promise<Record<string, any>> {
-    try {
-      // const { mcpcard_id, user_id, config } = generateServiceDto;
-      // const McpCard = await this.findOne(mcpcard_id);
-
-      // Return fake data instead of making actual API call
-      return this.fakeMcpGenerateData;
-    } catch (error) {
-      throw new HttpException(
-        `Failed to generate service: ${(error as Error).message}`,
-        HttpStatus.INTERNAL_SERVER_ERROR
-      );
-    }
-  }
-
-  async getMcpServerByName(name: string): Promise<Record<string, any>> {
-    return this.fakeFindOneMcpserver;
-  }
 }
