@@ -93,24 +93,25 @@ export class McpCardService {
   }
 
   private readonly fakeMcpGenerateData = {
-    "apiVersion": "toolhive.stacklok.dev/v1alpha1",
-    "kind": "MCPServer",
-    "metadata": {
-      "annotations": {
-        "kubectl.kubernetes.io/last-applied-configuration": "{\"apiVersion\":\"toolhive.stacklok.dev/v1alpha1\",\"kind\":\"MCPServer\",\"metadata\":{\"annotations\":{},\"name\":\"wikipedia-fake\",\"namespace\":\"toolhive-system\"},\"spec\":{\"image\":\"docker.io/mcp/wikipedia-mcp:latest\",\"permissionProfile\":{\"name\":\"network\",\"type\":\"builtin\"},\"port\":8080,\"resources\":{\"limits\":{\"cpu\":\"2\",\"memory\":\"4Gi\"},\"requests\":{\"cpu\":\"2\",\"memory\":\"4Gi\"}},\"transport\":\"stdio\"}}\n"
+    apiVersion: "toolhive.stacklok.dev/v1alpha1",
+    kind: "MCPServer",
+    metadata: {
+      annotations: {
+        "kubectl.kubernetes.io/last-applied-configuration":
+          '{"apiVersion":"toolhive.stacklok.dev/v1alpha1","kind":"MCPServer","metadata":{"annotations":{},"name":"wikipedia-fake","namespace":"toolhive-system"},"spec":{"image":"docker.io/mcp/wikipedia-mcp:latest","permissionProfile":{"name":"network","type":"builtin"},"port":8080,"resources":{"limits":{"cpu":"2","memory":"4Gi"},"requests":{"cpu":"2","memory":"4Gi"}},"transport":"stdio"}}\n',
       },
-      "creationTimestamp": "2025-05-17T03:03:56Z",
-      "generation": 1,
-      "managedFields": [
+      creationTimestamp: "2025-05-17T03:03:56Z",
+      generation: 1,
+      managedFields: [
         {
-          "apiVersion": "toolhive.stacklok.dev/v1alpha1",
-          "fieldsType": "FieldsV1",
-          "fieldsV1": {
+          apiVersion: "toolhive.stacklok.dev/v1alpha1",
+          fieldsType: "FieldsV1",
+          fieldsV1: {
             "f:metadata": {
               "f:annotations": {
                 ".": {},
-                "f:kubectl.kubernetes.io/last-applied-configuration": {}
-              }
+                "f:kubectl.kubernetes.io/last-applied-configuration": {},
+              },
             },
             "f:spec": {
               ".": {},
@@ -118,7 +119,7 @@ export class McpCardService {
               "f:permissionProfile": {
                 ".": {},
                 "f:name": {},
-                "f:type": {}
+                "f:type": {},
               },
               "f:port": {},
               "f:resources": {
@@ -126,54 +127,54 @@ export class McpCardService {
                 "f:limits": {
                   ".": {},
                   "f:cpu": {},
-                  "f:memory": {}
+                  "f:memory": {},
                 },
                 "f:requests": {
                   ".": {},
                   "f:cpu": {},
-                  "f:memory": {}
-                }
+                  "f:memory": {},
+                },
               },
-              "f:transport": {}
-            }
+              "f:transport": {},
+            },
           },
-          "manager": "kubectl",
-          "operation": "Update",
-          "time": "2025-05-17T03:03:56Z"
-        }
-      ],
-      "name": "wikipedia-fake3",
-      "namespace": "toolhive-system",
-      "resourceVersion": "1747451036751071007",
-      "uid": "b2026bfa-ffff-408a-a781-d8d730afa5c5"
-    },
-    "spec": {
-      "image": "docker.io/mcp/wikipedia-mcp:latest",
-      "permissionProfile": {
-        "name": "network",
-        "type": "builtin"
-      },
-      "port": 8080,
-      "resources": {
-        "limits": {
-          "cpu": "2",
-          "memory": "4Gi"
+          manager: "kubectl",
+          operation: "Update",
+          time: "2025-05-17T03:03:56Z",
         },
-        "requests": {
-          "cpu": "2",
-          "memory": "4Gi"
-        }
+      ],
+      name: "wikipedia-fake3",
+      namespace: "toolhive-system",
+      resourceVersion: "1747451036751071007",
+      uid: "b2026bfa-ffff-408a-a781-d8d730afa5c5",
+    },
+    spec: {
+      image: "docker.io/mcp/wikipedia-mcp:latest",
+      permissionProfile: {
+        name: "network",
+        type: "builtin",
       },
-      "transport": "stdio"
-    }
+      port: 8080,
+      resources: {
+        limits: {
+          cpu: "2",
+          memory: "4Gi",
+        },
+        requests: {
+          cpu: "2",
+          memory: "4Gi",
+        },
+      },
+      transport: "stdio",
+    },
   };
 
   async generateService(
     generateServiceDto: GenerateMcpServerDto
   ): Promise<Record<string, any>> {
     try {
-      // const { McpCard_id, user_id, config } = generateServiceDto;
-      // const McpCard = await this.findOne(McpCard_id);
+      // const { mcpcard_id, user_id, config } = generateServiceDto;
+      // const McpCard = await this.findOne(mcpcard_id);
 
       // Return fake data instead of making actual API call
       return this.fakeMcpGenerateData;

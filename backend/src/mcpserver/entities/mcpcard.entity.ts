@@ -11,7 +11,7 @@ export class McpCard {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Column({ unique: true })
+  @Column({ nullable: true })
   name: string;
 
   @Column()
