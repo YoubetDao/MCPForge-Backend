@@ -30,14 +30,14 @@ export class McpServerController {
   createMcpServer(
     @Body("name") name: string,
     @Body("image") image: string,
-    @Body("env") env: object,
+    @Body("envs") envs: object = {},
     @Body("labels") labels: object = {},
     @Body("annotations") annotations: object = {}
   ): Promise<any> {
     return this.McpServerService.createMcpServer(
       name,
       image,
-      env,
+      envs,
       labels,
       annotations
     );
