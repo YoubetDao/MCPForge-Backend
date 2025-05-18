@@ -1,35 +1,45 @@
-"use client"
+"use client";
 
-import { useParams } from "next/navigation"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { Card, CardContent } from "@/components/ui/card"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import Link from "next/link"
-import { Home, Copy, Clock, ServerIcon, PenToolIcon as Tool, MessageSquare, PlayCircle, Loader2 } from "lucide-react"
-import { useEffect, useState } from "react"
-import { getMCPCards } from "@/lib/api"
-import { distributor } from "@/lib/distributor"
+import { useParams } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import Link from "next/link";
+import {
+  Home,
+  Copy,
+  Clock,
+  ServerIcon,
+  PenToolIcon as Tool,
+  MessageSquare,
+  PlayCircle,
+  Loader2,
+} from "lucide-react";
+import { useEffect, useState } from "react";
+import { getMCPCards } from "@/lib/api";
+import { distributor } from "@/lib/distributor";
+import ReactMarkdown from "react-markdown";
 
 // Add Ethereum to the window object type
 declare global {
   interface Window {
-    ethereum?: any
+    ethereum?: any;
   }
 }
 
 export default function ServerDetailPage() {
-  const params = useParams()
-  const slug = params.slug as string
-  const [isLoading, setIsLoading] = useState(true)
-  const [server, setServer] = useState<any>(null)
-  const [isWalletConnecting, setIsWalletConnecting] = useState(false)
-  const [isTransactionPending, setIsTransactionPending] = useState(false)
-  const [transactionHash, setTransactionHash] = useState<string | null>(null)
-  const [transactionError, setTransactionError] = useState<string | null>(null)
-  const [isStartingServer, setIsStartingServer] = useState(false)
-  const [serverStartResponse, setServerStartResponse] = useState<any>(null)
-  const [serverStartError, setServerStartError] = useState<string | null>(null)
+  const params = useParams();
+  const slug = params.slug as string;
+  const [isLoading, setIsLoading] = useState(true);
+  const [server, setServer] = useState<any>(null);
+  const [isWalletConnecting, setIsWalletConnecting] = useState(false);
+  const [isTransactionPending, setIsTransactionPending] = useState(false);
+  const [transactionHash, setTransactionHash] = useState<string | null>(null);
+  const [transactionError, setTransactionError] = useState<string | null>(null);
+  const [isStartingServer, setIsStartingServer] = useState(false);
+  const [serverStartResponse, setServerStartResponse] = useState<any>(null);
+  const [serverStartError, setServerStartError] = useState<string | null>(null);
 
   const handleTransferEth = async () => {
     setTransactionError(null);
@@ -110,13 +120,13 @@ export default function ServerDetailPage() {
     setIsTransactionPending(false);
   };
 
-  // 模拟加载数据
+  // 修改loadMCPCardData函数中处理服务器数据的部分
   useEffect(() => {
     async function loadMCPCardData() {
-      setIsLoading(true)
+      setIsLoading(true);
       try {
         // Fetch all cards and find the one matching the slug
-        const cards = await getMCPCards()
+        const cards = await getMCPCards();
         // Try to match by ID or name
         const card = cards.find(
           (c) =>
@@ -124,8 +134,8 @@ export default function ServerDetailPage() {
             c.name
               .toLowerCase()
               .replace(/\s+/g, "-")
-              .replace(/[^\w-]+/g, "") === slug,
-        )
+              .replace(/[^\w-]+/g, "") === slug
+        );
 
         if (card) {
           // Transform the data to match our UI structure
@@ -136,18 +146,33 @@ export default function ServerDetailPage() {
             creator: "MCP forge",
             createdAt: new Date(card.created_at).toLocaleDateString(),
             tags: ["mcp", card.name.split("-")[0] || "server"],
-            overview: {
-              what: card.overview,
-              how: "To use this server, follow the configuration instructions and integrate it into your application.",
-              features: Object.keys(card.tools).map((key) => `${key}: ${card.tools[key]}`),
-              useCases: [
-                "Enhanced LLM contextual responses",
-                "Specialized data integration",
-                "Custom workflow automation",
-                "Building MCP-powered applications",
-              ],
-            },
-            config: JSON.stringify({ mcpServers: { [card.name]: { dockerImage: card.docker_image } } }, null, 2),
+            // 处理markdown内容
+            overview:
+              typeof card.overview === "string"
+                ? card.overview
+                    .replace(/\\n/g, "\n")
+                    .replace(/^"/, "")
+                    .replace(/"$/, "")
+                : "No overview available",
+            tools:
+              typeof card.tools === "string"
+                ? (card.tools as string)
+                    .replace(/\\n/g, "\n")
+                    .replace(/^"/, "")
+                    .replace(/"$/, "") // Clean up any quotes and replace escaped newlines
+                : Object.entries(card.tools)
+                    .map(
+                      ([key, value]) =>
+                        `## ${key}\n\n${String(value).replace(/\\n/g, "\n")}`
+                    )
+                    .join("\n\n"),
+            config: JSON.stringify(
+              {
+                mcpServers: { [card.name]: { dockerImage: card.docker_image } },
+              },
+              null,
+              2
+            ),
             price: card.price,
             recommendedServers: cards
               .filter((c) => c.id !== card.id)
@@ -158,7 +183,7 @@ export default function ServerDetailPage() {
                 description: c.description,
                 isFeatured: true,
               })),
-          })
+          });
         } else {
           // If no matching card is found, create a fallback server object
           setServer({
@@ -168,19 +193,23 @@ export default function ServerDetailPage() {
             creator: "Unknown",
             createdAt: "N/A",
             tags: ["mcp", "unknown"],
-            overview: {
-              what: "Information about this server is currently unavailable.",
-              how: "No usage information available.",
-              features: ["No features information available."],
-              useCases: ["No use cases information available."],
-            },
-            config: JSON.stringify({ mcpServers: { example: { dockerImage: "example/image:latest" } } }, null, 2),
+            overview: "Information about this server is currently unavailable.",
+            tools: "No tools information available.",
+            config: JSON.stringify(
+              {
+                mcpServers: {
+                  example: { dockerImage: "example/image:latest" },
+                },
+              },
+              null,
+              2
+            ),
             price: "Unknown",
             recommendedServers: [],
-          })
+          });
         }
       } catch (error) {
-        console.error("Error loading MCP card:", error)
+        console.error("Error loading MCP card:", error);
         // Create a fallback server object in case of error
         setServer({
           id: "error",
@@ -189,46 +218,52 @@ export default function ServerDetailPage() {
           creator: "Unknown",
           createdAt: "N/A",
           tags: ["mcp", "error"],
-          overview: {
-            what: "There was an error loading information about this server.",
-            how: "No usage information available.",
-            features: ["No features information available."],
-            useCases: ["No use cases information available."],
-          },
-          config: JSON.stringify({ mcpServers: { example: { dockerImage: "example/image:latest" } } }, null, 2),
+          overview: "There was an error loading information about this server.",
+          tools: "No tools information available.",
+          config: JSON.stringify(
+            {
+              mcpServers: { example: { dockerImage: "example/image:latest" } },
+            },
+            null,
+            2
+          ),
           price: "Unknown",
           recommendedServers: [],
-        })
+        });
       } finally {
-        setIsLoading(false)
+        setIsLoading(false);
       }
     }
 
-    loadMCPCardData()
-  }, [slug])
+    loadMCPCardData();
+  }, [slug]);
 
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-black flex items-center justify-center">
         <div className="text-center">
           <div className="h-10 w-10 border-t-2 border-r-2 border-cyan-500 rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-gray-600 dark:text-gray-400 font-mono">LOADING SERVER DATA...</p>
+          <p className="text-gray-600 dark:text-gray-400 font-mono">
+            LOADING SERVER DATA...
+          </p>
         </div>
       </div>
-    )
+    );
   }
 
   if (!server) {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-black flex items-center justify-center">
         <div className="text-center">
-          <p className="text-gray-600 dark:text-gray-400 mb-4">Server not found</p>
+          <p className="text-gray-600 dark:text-gray-400 mb-4">
+            Server not found
+          </p>
           <Button asChild>
             <Link href="/">Return to Home</Link>
           </Button>
         </div>
       </div>
-    )
+    );
   }
 
   return (
@@ -241,16 +276,24 @@ export default function ServerDetailPage() {
       <div className="container mx-auto py-6 px-4 relative z-1">
         {/* Breadcrumb navigation */}
         <div className="flex items-center gap-2 mb-6 text-sm text-gray-600 dark:text-gray-400">
-          <Link href="/" className="flex items-center hover:text-cyan-500 dark:hover:text-cyan-400 transition-colors">
+          <Link
+            href="/"
+            className="flex items-center hover:text-cyan-500 dark:hover:text-cyan-400 transition-colors"
+          >
             <Home className="h-4 w-4 mr-1" />
             <span>Home</span>
           </Link>
           <span>/</span>
-          <Link href="/servers" className="hover:text-cyan-500 dark:hover:text-cyan-400 transition-colors">
+          <Link
+            href="/servers"
+            className="hover:text-cyan-500 dark:hover:text-cyan-400 transition-colors"
+          >
             Servers
           </Link>
           <span>/</span>
-          <span className="text-cyan-600 dark:text-cyan-400">{server.title}</span>
+          <span className="text-cyan-600 dark:text-cyan-400">
+            {server.title}
+          </span>
         </div>
 
         {/* Server header */}
@@ -261,16 +304,24 @@ export default function ServerDetailPage() {
 
           <div className="flex items-center gap-4 mb-4 text-sm">
             <div className="flex items-center gap-2">
-              <span className="text-gray-600 dark:text-gray-400">Created by</span>
-              <span className="font-medium text-cyan-600 dark:text-cyan-400">{server.creator}</span>
+              <span className="text-gray-600 dark:text-gray-400">
+                Created by
+              </span>
+              <span className="font-medium text-cyan-600 dark:text-cyan-400">
+                {server.creator}
+              </span>
             </div>
             <div className="flex items-center gap-2">
               <Clock className="h-4 w-4 text-gray-500 dark:text-gray-500" />
-              <span className="text-gray-600 dark:text-gray-400">{server.createdAt}</span>
+              <span className="text-gray-600 dark:text-gray-400">
+                {server.createdAt}
+              </span>
             </div>
           </div>
 
-          <p className="text-lg text-gray-700 dark:text-gray-300 mb-4">{server.description}</p>
+          <p className="text-lg text-gray-700 dark:text-gray-300 mb-4">
+            {server.description}
+          </p>
 
           <div className="flex flex-wrap gap-2">
             {server.tags.map((tag: string) => (
@@ -331,41 +382,41 @@ export default function ServerDetailPage() {
                 </TabsList>
 
                 <TabsContent value="overview" className="p-6">
-                  <div className="space-y-8">
-                    <div>
-                      <h2 className="text-xl font-bold mb-3 text-gray-800 dark:text-gray-100 font-cyberpunk">
-                        what is {server.title} MCP Server?
-                      </h2>
-                      <p className="text-gray-700 dark:text-gray-300">{server.overview.what}</p>
-                    </div>
-
-                    <div>
-                      <h2 className="text-xl font-bold mb-3 text-gray-800 dark:text-gray-100 font-cyberpunk">
-                        how to use {server.title} MCP Server?
-                      </h2>
-                      <p className="text-gray-700 dark:text-gray-300">{server.overview.how}</p>
-                    </div>
-
-                    <div>
-                      <h2 className="text-xl font-bold mb-3 text-gray-800 dark:text-gray-100 font-cyberpunk">
-                        key features of {server.title} MCP Server?
-                      </h2>
-                      <ul className="list-disc pl-5 space-y-2 text-gray-700 dark:text-gray-300">
-                        {server.overview.features.map((feature: string, index: number) => (
-                          <li key={index}>{feature}</li>
-                        ))}
-                      </ul>
-                    </div>
-
-                    <div>
-                      <h2 className="text-xl font-bold mb-3 text-gray-800 dark:text-gray-100 font-cyberpunk">
-                        use cases of {server.title} MCP Server?
-                      </h2>
-                      <ul className="list-disc pl-5 space-y-2 text-gray-700 dark:text-gray-300">
-                        {server.overview.useCases.map((useCase: string, index: number) => (
-                          <li key={index}>{useCase}</li>
-                        ))}
-                      </ul>
+                  <div className="markdown-content text-gray-700 dark:text-gray-300">
+                    <div className="prose prose-sm dark:prose-invert max-w-none">
+                      <ReactMarkdown
+                        components={{
+                          h1: ({ node, ...props }) => (
+                            <h1
+                              className="text-2xl font-bold mt-6 mb-4"
+                              {...props}
+                            />
+                          ),
+                          h2: ({ node, ...props }) => (
+                            <h2
+                              className="text-xl font-bold mt-5 mb-3"
+                              {...props}
+                            />
+                          ),
+                          h3: ({ node, ...props }) => (
+                            <h3
+                              className="text-lg font-bold mt-4 mb-2"
+                              {...props}
+                            />
+                          ),
+                          p: ({ node, ...props }) => (
+                            <p className="my-2" {...props} />
+                          ),
+                          ul: ({ node, ...props }) => (
+                            <ul className="list-disc pl-6 my-3" {...props} />
+                          ),
+                          li: ({ node, ...props }) => (
+                            <li className="my-1" {...props} />
+                          ),
+                        }}
+                      >
+                        {server.overview}
+                      </ReactMarkdown>
                     </div>
                   </div>
                 </TabsContent>
@@ -373,47 +424,58 @@ export default function ServerDetailPage() {
                 <TabsContent value="content" className="p-6">
                   <div className="text-center py-10">
                     <ServerIcon className="h-16 w-16 text-gray-400 dark:text-gray-600 mx-auto mb-4" />
-                    <p className="text-gray-600 dark:text-gray-400 mb-4">Content information will be available soon.</p>
+                    <p className="text-gray-600 dark:text-gray-400 mb-4">
+                      Content information will be available soon.
+                    </p>
                   </div>
                 </TabsContent>
 
                 <TabsContent value="tools" className="p-6">
-                  {server.overview && server.overview.features && server.overview.features.length > 0 ? (
-                    <div className="space-y-6">
-                      <h2 className="text-xl font-bold mb-4 text-gray-800 dark:text-gray-100 font-cyberpunk">
-                        Available Tools
-                      </h2>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {server.overview.features.map((feature: string, index: number) => {
-                          const [toolName, toolDescription] = feature.split(":").map((s) => s.trim())
-                          return (
-                            <div
-                              key={index}
-                              className="border border-gray-200 dark:border-cyan-900/50 p-4 rounded-md bg-white/50 dark:bg-black/50 hover:border-cyan-500/50 transition-colors"
-                            >
-                              <h3 className="font-bold text-cyan-600 dark:text-cyan-400 mb-2">{toolName}</h3>
-                              <p className="text-gray-700 dark:text-gray-300 text-sm">
-                                {toolDescription || "No description available"}
-                              </p>
-                            </div>
-                          )
-                        })}
-                      </div>
+                  <div className="markdown-content text-gray-700 dark:text-gray-300">
+                    <div className="prose prose-sm dark:prose-invert max-w-none">
+                      <ReactMarkdown
+                        components={{
+                          h1: ({ node, ...props }) => (
+                            <h1
+                              className="text-2xl font-bold mt-6 mb-4"
+                              {...props}
+                            />
+                          ),
+                          h2: ({ node, ...props }) => (
+                            <h2
+                              className="text-xl font-bold mt-5 mb-3"
+                              {...props}
+                            />
+                          ),
+                          h3: ({ node, ...props }) => (
+                            <h3
+                              className="text-lg font-bold mt-4 mb-2"
+                              {...props}
+                            />
+                          ),
+                          p: ({ node, ...props }) => (
+                            <p className="my-2" {...props} />
+                          ),
+                          ul: ({ node, ...props }) => (
+                            <ul className="list-disc pl-6 my-3" {...props} />
+                          ),
+                          li: ({ node, ...props }) => (
+                            <li className="my-1" {...props} />
+                          ),
+                        }}
+                      >
+                        {server.tools}
+                      </ReactMarkdown>
                     </div>
-                  ) : (
-                    <div className="text-center py-10">
-                      <Tool className="h-16 w-16 text-gray-400 dark:text-gray-600 mx-auto mb-4" />
-                      <p className="text-gray-600 dark:text-gray-400 mb-4">
-                        No tools information available for this server.
-                      </p>
-                    </div>
-                  )}
+                  </div>
                 </TabsContent>
 
                 <TabsContent value="comments" className="p-6">
                   <div className="text-center py-10">
                     <MessageSquare className="h-16 w-16 text-gray-400 dark:text-gray-600 mx-auto mb-4" />
-                    <p className="text-gray-600 dark:text-gray-400 mb-4">Comments will be available soon.</p>
+                    <p className="text-gray-600 dark:text-gray-400 mb-4">
+                      Comments will be available soon.
+                    </p>
                   </div>
                 </TabsContent>
               </Tabs>
@@ -450,14 +512,22 @@ export default function ServerDetailPage() {
 
             {/* Show transaction error if any */}
             {transactionError && (
-              <div className="mt-2 text-sm text-red-500 dark:text-red-400">错误: {transactionError}</div>
+              <div className="mt-2 text-sm text-red-500 dark:text-red-400">
+                错误: {transactionError}
+              </div>
             )}
 
             {/* Show transaction hash if available */}
             {transactionHash && (
               <div className="mt-2 text-sm text-green-600 dark:text-green-400">
-                <a href={`https://optimism-sepolia.blockscout.com/tx/${transactionHash}`} target="_blank" rel="noopener noreferrer">
-                  <span className="font-mono break-all">交易哈希：{transactionHash}</span>
+                <a
+                  href={`https://optimism-sepolia.blockscout.com/tx/${transactionHash}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <span className="font-mono break-all">
+                    交易哈希：{transactionHash}
+                  </span>
                 </a>
               </div>
             )}
@@ -468,9 +538,9 @@ export default function ServerDetailPage() {
                 className="w-full mt-4 bg-gradient-to-r from-cyan-600 to-cyan-500 hover:from-cyan-500 hover:to-cyan-400 text-black font-cyberpunk border-0 h-12"
                 onClick={async () => {
                   try {
-                    setIsStartingServer(true)
-                    setServerStartError(null)
-                    setServerStartResponse(null)
+                    setIsStartingServer(true);
+                    setServerStartError(null);
+                    setServerStartResponse(null);
 
                     // Use our own API route instead of calling the external API directly
                     const response = await fetch("/api/start-mcp-server", {
@@ -482,21 +552,27 @@ export default function ServerDetailPage() {
                         name: "guoxingrui2",
                         image: "docker.io/mcp/wikipedia-mcp:latest",
                       }),
-                    })
+                    });
 
-                    const data = await response.json()
+                    const data = await response.json();
 
                     if (!response.ok) {
-                      throw new Error(data.error || "Failed to start MCP server")
+                      throw new Error(
+                        data.error || "Failed to start MCP server"
+                      );
                     }
 
-                    setServerStartResponse(data)
-                    console.log("MCP server started successfully:", data)
+                    setServerStartResponse(data);
+                    console.log("MCP server started successfully:", data);
                   } catch (error) {
-                    console.error("Error starting MCP server:", error)
-                    setServerStartError(error instanceof Error ? error.message : "Failed to start MCP server")
+                    console.error("Error starting MCP server:", error);
+                    setServerStartError(
+                      error instanceof Error
+                        ? error.message
+                        : "Failed to start MCP server"
+                    );
                   } finally {
-                    setIsStartingServer(false)
+                    setIsStartingServer(false);
                   }
                 }}
               >
@@ -522,7 +598,9 @@ export default function ServerDetailPage() {
 
             {/* Show server start error if any */}
             {serverStartError && (
-              <div className="mt-2 text-sm text-red-500 dark:text-red-400">启动错误: {serverStartError}</div>
+              <div className="mt-2 text-sm text-red-500 dark:text-red-400">
+                启动错误: {serverStartError}
+              </div>
             )}
 
             {/* Show server start response if available */}
@@ -541,13 +619,19 @@ export default function ServerDetailPage() {
                 <div className="p-4 border-b border-gray-200 dark:border-gray-800">
                   <h3 className="font-bold text-gray-800 dark:text-gray-100 flex items-center justify-between">
                     Server Config
-                    <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-gray-500 hover:text-cyan-500">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 w-8 p-0 text-gray-500 hover:text-cyan-500"
+                    >
                       <Copy className="h-4 w-4" />
                     </Button>
                   </h3>
                 </div>
                 <div className="p-4 bg-gray-50 dark:bg-gray-900/50 font-mono text-sm overflow-x-auto">
-                  <pre className="text-gray-800 dark:text-gray-300 whitespace-pre-wrap">{server.config}</pre>
+                  <pre className="text-gray-800 dark:text-gray-300 whitespace-pre-wrap">
+                    {server.config}
+                  </pre>
                 </div>
               </CardContent>
             </Card>
@@ -559,7 +643,9 @@ export default function ServerDetailPage() {
 
               <CardContent className="p-0">
                 <div className="p-4 border-b border-gray-200 dark:border-gray-800">
-                  <h3 className="font-bold text-gray-800 dark:text-gray-100">Recommend Servers</h3>
+                  <h3 className="font-bold text-gray-800 dark:text-gray-100">
+                    Recommend Servers
+                  </h3>
                 </div>
                 <div className="p-4 space-y-4">
                   {server.recommendedServers.map((rec: any, index: number) => (
@@ -567,8 +653,12 @@ export default function ServerDetailPage() {
                       key={index}
                       className="p-3 border border-gray-200 dark:border-cyan-900/30 hover:border-cyan-500/50 transition-colors rounded-md"
                     >
-                      <h4 className="font-bold text-gray-800 dark:text-gray-100 mb-1">{rec.title}</h4>
-                      <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2">{rec.description}</p>
+                      <h4 className="font-bold text-gray-800 dark:text-gray-100 mb-1">
+                        {rec.title}
+                      </h4>
+                      <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2">
+                        {rec.description}
+                      </p>
                     </div>
                   ))}
                 </div>
@@ -578,5 +668,5 @@ export default function ServerDetailPage() {
         </div>
       </div>
     </div>
-  )
+  );
 }
