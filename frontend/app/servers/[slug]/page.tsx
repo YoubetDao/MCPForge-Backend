@@ -17,7 +17,13 @@ import {
   Loader2,
 } from "lucide-react";
 import { useEffect, useState } from "react";
-import { getMCPCards } from "@/lib/api";
+import {
+  getMCPCards,
+  startMCPServer,
+  checkMCPServerStatus,
+  pollServerStatus,
+  deleteMCPServer,
+} from "@/lib/api";
 import { distributor } from "@/lib/distributor";
 import ReactMarkdown from "react-markdown";
 
@@ -40,7 +46,30 @@ export default function ServerDetailPage() {
   const [isStartingServer, setIsStartingServer] = useState(false);
   const [serverStartResponse, setServerStartResponse] = useState<any>(null);
   const [serverStartError, setServerStartError] = useState<string | null>(null);
+  const [showTransferButton, setShowTransferButton] = useState(false);
+  const [serverUrl, setServerUrl] = useState<string | null>(null);
+  const [isPolling, setIsPolling] = useState(false);
+  const [isServerRunning, setIsServerRunning] = useState(false);
+  const [serverPhase, setServerPhase] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
+  // 检查服务器状态
+  useEffect(() => {
+    async function checkStatus() {
+      if (server?.title) {
+        const status = await checkMCPServerStatus(server.title);
+        setShowTransferButton(!status.exists);
+        if (status.url) {
+          setServerUrl(status.url);
+          setServerPhase(status.phase || null);
+          setIsServerRunning(status.phase === "Running");
+        }
+      }
+    }
+    checkStatus();
+  }, [server?.title]);
+
+  // 处理转账
   const handleTransferEth = async () => {
     setTransactionError(null);
     setTransactionHash(null);
@@ -237,6 +266,78 @@ export default function ServerDetailPage() {
 
     loadMCPCardData();
   }, [slug]);
+
+  // 修改启动服务器的处理函数
+  const handleServerAction = async () => {
+    if (isServerRunning) {
+      try {
+        setIsDeleting(true);
+        await deleteMCPServer(server.title);
+        // 重置状态
+        setServerUrl(null);
+        setServerPhase(null);
+        setIsServerRunning(false);
+        setShowTransferButton(true);
+      } catch (error) {
+        console.error("Error stopping server:", error);
+        setServerStartError(
+          error instanceof Error ? error.message : "Failed to stop MCP server"
+        );
+      } finally {
+        setIsDeleting(false);
+      }
+      return;
+    }
+
+    try {
+      setIsStartingServer(true);
+      setServerStartError(null);
+      setServerStartResponse(null);
+      setServerUrl(null);
+
+      // 提取 docker image
+      const serverConfig = JSON.parse(server.config);
+      const dockerImage = serverConfig.mcpServers[server.title]?.dockerImage;
+
+      if (!dockerImage) {
+        throw new Error("Docker image not found in server configuration");
+      }
+
+      console.log("Starting MCP server:", {
+        serverName: server.title,
+        dockerImage: dockerImage,
+      });
+
+      // 启动服务器
+      const data = await startMCPServer(server.title, dockerImage);
+      console.log("Server start response:", data);
+      setServerStartResponse(data);
+
+      // 开始轮询服务器状态
+      setIsPolling(true);
+      try {
+        const url = await pollServerStatus(server.title);
+        setServerUrl(url);
+        setServerPhase("Running");
+        setIsServerRunning(true); // 确保在服务器成功启动后设置为运行状态
+        console.log("Server is ready with URL:", url);
+      } catch (error) {
+        console.error("Polling error:", error);
+        setServerStartError("Server startup timeout or error occurred");
+        setIsServerRunning(false); // 如果启动失败，确保设置为非运行状态
+      } finally {
+        setIsPolling(false);
+      }
+    } catch (error) {
+      console.error("Error starting MCP server:", error);
+      setServerStartError(
+        error instanceof Error ? error.message : "Failed to start MCP server"
+      );
+      setIsServerRunning(false); // 如果出错，确保设置为非运行状态
+    } finally {
+      setIsStartingServer(false);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -484,8 +585,8 @@ export default function ServerDetailPage() {
 
           {/* Sidebar */}
           <div className="space-y-6">
-            {/* 支付按钮，仅在未交易成功时显示 */}
-            {!transactionHash && (
+            {/* Transfer ETH button - 只在需要时显示 */}
+            {showTransferButton && (
               <Button
                 className="w-full bg-gradient-to-r from-cyan-500 to-pink-500 hover:from-cyan-400 hover:to-pink-400 text-black font-cyberpunk border-0 h-12"
                 onClick={handleTransferEth}
@@ -532,70 +633,62 @@ export default function ServerDetailPage() {
               </div>
             )}
 
-            {/* Add Start MCP Server button after successful transaction */}
-            {transactionHash && (
-              <Button
-                className="w-full mt-4 bg-gradient-to-r from-cyan-600 to-cyan-500 hover:from-cyan-500 hover:to-cyan-400 text-black font-cyberpunk border-0 h-12"
-                onClick={async () => {
-                  try {
-                    setIsStartingServer(true);
-                    setServerStartError(null);
-                    setServerStartResponse(null);
-
-                    // Use our own API route instead of calling the external API directly
-                    const response = await fetch("/api/start-mcp-server", {
-                      method: "POST",
-                      headers: {
-                        "Content-Type": "application/json",
-                      },
-                      body: JSON.stringify({
-                        name: "guoxingrui2",
-                        image: "docker.io/mcp/wikipedia-mcp:latest",
-                      }),
-                    });
-
-                    const data = await response.json();
-
-                    if (!response.ok) {
-                      throw new Error(
-                        data.error || "Failed to start MCP server"
-                      );
-                    }
-
-                    setServerStartResponse(data);
-                    console.log("MCP server started successfully:", data);
-                  } catch (error) {
-                    console.error("Error starting MCP server:", error);
-                    setServerStartError(
-                      error instanceof Error
-                        ? error.message
-                        : "Failed to start MCP server"
-                    );
-                  } finally {
-                    setIsStartingServer(false);
-                  }
-                }}
-              >
-                {isStartingServer ? (
-                  <>
-                    <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                    Starting MCP Server...
-                  </>
-                ) : serverStartResponse ? (
-                  <>
-                    <ServerIcon className="mr-2 h-5 w-5" />
-                    MCP Server Started
-                  </>
-                ) : (
-                  <>
-                    <ServerIcon className="mr-2 h-5 w-5" />
-                    {/* TODO: 开启 MCP Server 按钮变为 停止 MCP Server，并在停止后考虑清空 transactionHash */}
-                    Start a MCP Server
-                  </>
-                )}
-              </Button>
+            {/* 显示服务器URL和状态 */}
+            {serverUrl && (
+              <div className="mt-4 p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-900 rounded-md">
+                <h3 className="text-green-700 dark:text-green-400 font-medium mb-2">
+                  Server Status: {serverPhase || "Unknown"}
+                </h3>
+                <p className="text-green-600 dark:text-green-500 font-mono text-sm break-all">
+                  Server URL: {serverUrl}
+                </p>
+              </div>
             )}
 
+            {/* 添加轮询状态显示 */}
+            {isPolling && (
+              <div className="mt-4 flex items-center text-cyan-600 dark:text-cyan-400">
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                <span>Waiting for server to be ready...</span>
+              </div>
+            )}
+
+            <Button
+              className={`w-full mt-4 bg-gradient-to-r ${
+                isServerRunning
+                  ? "from-red-600 to-red-500 hover:from-red-500 hover:to-red-400"
+                  : "from-cyan-600 to-cyan-500 hover:from-cyan-500 hover:to-cyan-400"
+              } text-black font-cyberpunk border-0 h-12`}
+              onClick={handleServerAction}
+              disabled={isStartingServer || isPolling || isDeleting}
+            >
+              {isStartingServer ? (
+                <>
+                  <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                  Starting MCP Server...
+                </>
+              ) : isPolling ? (
+                <>
+                  <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                  Waiting for Server...
+                </>
+              ) : isDeleting ? (
+                <>
+                  <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                  Stopping MCP Server...
+                </>
+              ) : isServerRunning ? (
+                <>
+                  <ServerIcon className="mr-2 h-5 w-5" />
+                  Stop MCP Server
+                </>
+              ) : (
+                <>
+                  <ServerIcon className="mr-2 h-5 w-5" />
+                  Start MCP Server
+                </>
+              )}
+            </Button>
             {/* Show server start error if any */}
             {serverStartError && (
               <div className="mt-2 text-sm text-red-500 dark:text-red-400">
