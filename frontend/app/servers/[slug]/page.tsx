@@ -196,12 +196,15 @@ export default function ServerDetailPage() {
             github_url: card.github_url,
             // 处理markdown内容
             overview: card.overview || "No overview available",
-            // 处理 tools 对象
-            tools: typeof card.tools === "string" 
-              ? card.tools
-              : Object.entries(card.tools || {})
-                  .map(([key, value]) => `## ${key}\n\n${value}`)
-                  .join("\n\n"),
+            // 处理 tools 对象，确保Markdown正确渲染
+            tools:
+              typeof card.tools === "string"
+                ? (card.tools as string)
+                    .replace(/\\n/g, "\n")
+                    .replace(/^"(#+)/gm, "$1")
+                : Object.entries(card.tools || {})
+                    .map(([key, value]) => `## ${key}\n\n${value}`)
+                    .join("\n\n"),
             config: JSON.stringify(
               {
                 mcpServers: { [card.name]: { dockerImage: card.docker_image } },
@@ -231,7 +234,8 @@ export default function ServerDetailPage() {
             tags: ["mcp", "unknown"],
             github_url: `https://github.com/mcp-plugins/${slug.toLowerCase()}`,
             overview: "Information about this server is currently unavailable.",
-            tools: "No tools information available.",
+            tools:
+              "## Tools\n\nNo tools information available for this server.",
             config: JSON.stringify(
               {
                 mcpServers: {
@@ -257,7 +261,7 @@ export default function ServerDetailPage() {
           tags: ["mcp", "error"],
           github_url: `https://github.com/mcp-plugins/${slug.toLowerCase()}`,
           overview: "There was an error loading information about this server.",
-          tools: "No tools information available.",
+          tools: "## Tools\n\nNo tools information available for this server.",
           config: JSON.stringify(
             {
               mcpServers: { example: { dockerImage: "example/image:latest" } },
@@ -598,9 +602,16 @@ export default function ServerDetailPage() {
                           li: ({ node, ...props }) => (
                             <li className="my-1" {...props} />
                           ),
+                          code: ({ node, ...props }) => (
+                            <code
+                              className="bg-gray-100 dark:bg-gray-800 px-1 py-0.5 rounded text-sm"
+                              {...props}
+                            />
+                          ),
                         }}
                       >
-                        {server.tools}
+                        {/* Clean up any quotes at the beginning of the string */}
+                        {server.tools?.replace(/^["']/, "")}
                       </ReactMarkdown>
                     </div>
                   </div>
