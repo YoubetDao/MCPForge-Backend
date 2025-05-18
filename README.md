@@ -2,7 +2,6 @@
 
 ![image](https://github.com/user-attachments/assets/be26ebd7-d589-4339-a05f-c4eaa3c04941)
 
-
 ## 🔍 What is MCPForge?
 
 **MCPForge** is a **crypto-native AI Agent tool marketplace** that transforms GitHub-based MCP Repos into instantly deployable, callable, and monetizable AI services.
@@ -26,6 +25,10 @@
 
 - **Open, Modular, Composable**  
   Each MCP acts as a plug-and-play function in a global agent economy — **turning tools into digital assets**.
+
+## 🏗️ Architecture Overview
+MCPForge delivers an all-in-one cloud hosting solution for MCP Servers, enabling cryptocurrency payments to smart contracts while automatically provisioning dedicated instances for users. MCP Client requests are routed through a global load-balancing gateway to containerized MCP servers, with proxy services facilitating communication via standard input/output (stdio) or Server-Sent Events (SSE) protocols.
+![Architecture Overview](docs/arch.svg)
 
 ## 💸 What MCP Developers Get
 
