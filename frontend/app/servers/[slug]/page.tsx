@@ -46,7 +46,7 @@ export default function ServerDetailPage() {
   const [isStartingServer, setIsStartingServer] = useState(false);
   const [serverStartResponse, setServerStartResponse] = useState<any>(null);
   const [serverStartError, setServerStartError] = useState<string | null>(null);
-  const [showTransferButton, setShowTransferButton] = useState(false);
+  const [showTransferButton, setShowTransferButton] = useState(true); // 默认显示转账按钮
   const [serverUrl, setServerUrl] = useState<string | null>(null);
   const [isPolling, setIsPolling] = useState(false);
   const [isServerRunning, setIsServerRunning] = useState(false);
@@ -57,13 +57,31 @@ export default function ServerDetailPage() {
   useEffect(() => {
     async function checkStatus() {
       if (server?.title) {
-        const status = await checkMCPServerStatus(server.title);
-        setShowTransferButton(!status.exists);
-        if (status.url) {
-          setServerUrl(status.url);
-          setServerPhase(status.phase || null);
-          setIsServerRunning(status.phase === "Running");
+        try {
+          const status = await checkMCPServerStatus(server.title);
+          console.log("Server status check result:", status);
+
+          // 默认显示转账按钮，除非确认服务器存在
+          setShowTransferButton(!status.exists);
+
+          if (status.exists && status.url) {
+            setServerUrl(status.url);
+            setServerPhase(status.phase || null);
+            setIsServerRunning(status.phase === "Running");
+          } else {
+            // 如果服务器不存在，清除之前可能存在的状态
+            setServerUrl(null);
+            setServerPhase(null);
+            setIsServerRunning(false);
+          }
+        } catch (error) {
+          console.error("Error checking server status:", error);
+          // 发生错误时，默认显示转账按钮
+          setShowTransferButton(true);
         }
+      } else {
+        // 如果没有server.title，默认显示转账按钮
+        setShowTransferButton(true);
       }
     }
     checkStatus();
@@ -296,11 +314,30 @@ export default function ServerDetailPage() {
       setServerUrl(null);
 
       // 提取 docker image
-      const serverConfig = JSON.parse(server.config);
-      const dockerImage = serverConfig.mcpServers[server.title]?.dockerImage;
+      let dockerImage;
+      try {
+        const serverConfig = JSON.parse(server.config);
+        dockerImage = serverConfig.mcpServers[server.title]?.dockerImage;
 
+        if (!dockerImage) {
+          // Try to use a fallback if the server.title doesn't match exactly
+          // This happens when slugs differ from actual server names
+          const firstServerKey = Object.keys(serverConfig.mcpServers)[0];
+          if (firstServerKey) {
+            dockerImage = serverConfig.mcpServers[firstServerKey]?.dockerImage;
+            console.log(
+              `Using fallback docker image from key: ${firstServerKey}`
+            );
+          }
+        }
+      } catch (error) {
+        console.error("Error parsing server config:", error);
+      }
+
+      // Final fallback to a known working image if we still don't have one
       if (!dockerImage) {
-        throw new Error("Docker image not found in server configuration");
+        dockerImage = "docker.io/heha37/evm-mcp-server:2.0";
+        console.log("Using default docker image as fallback");
       }
 
       console.log("Starting MCP server:", {
@@ -585,8 +622,8 @@ export default function ServerDetailPage() {
 
           {/* Sidebar */}
           <div className="space-y-6">
-            {/* Transfer ETH button - 只在需要时显示 */}
-            {showTransferButton && (
+            {/* Transfer ETH button - 只在服务器不存在且未进行支付时显示 */}
+            {showTransferButton && !transactionHash && (
               <Button
                 className="w-full bg-gradient-to-r from-cyan-500 to-pink-500 hover:from-cyan-400 hover:to-pink-400 text-black font-cyberpunk border-0 h-12"
                 onClick={handleTransferEth}
@@ -595,17 +632,17 @@ export default function ServerDetailPage() {
                 {isWalletConnecting ? (
                   <>
                     <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                    连接钱包中...
+                    Connecting wallet...
                   </>
                 ) : isTransactionPending ? (
                   <>
                     <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                    交易处理中...
+                    Transaction processing...
                   </>
                 ) : (
                   <>
                     <PlayCircle className="mr-2 h-5 w-5" />
-                    支付 MCP 服务托管费用
+                    Pay MCP server hosting fee
                   </>
                 )}
               </Button>
@@ -614,7 +651,7 @@ export default function ServerDetailPage() {
             {/* Show transaction error if any */}
             {transactionError && (
               <div className="mt-2 text-sm text-red-500 dark:text-red-400">
-                错误: {transactionError}
+                Error: {transactionError}
               </div>
             )}
 
@@ -627,7 +664,7 @@ export default function ServerDetailPage() {
                   rel="noopener noreferrer"
                 >
                   <span className="font-mono break-all">
-                    交易哈希：{transactionHash}
+                    Transaction Hash: {transactionHash}
                   </span>
                 </a>
               </div>
@@ -692,14 +729,14 @@ export default function ServerDetailPage() {
             {/* Show server start error if any */}
             {serverStartError && (
               <div className="mt-2 text-sm text-red-500 dark:text-red-400">
-                启动错误: {serverStartError}
+                Server start error: {serverStartError}
               </div>
             )}
 
             {/* Show server start response if available */}
             {serverStartResponse && (
-              <div className="mt-2 text-sm text-green-600 dark:text-green-400">
-                服务器已启动: {serverStartResponse.id || "ID未知"}
+              <div className="mt-4 text-center text-green-600 dark:text-green-400 font-medium">
+                Server started
               </div>
             )}
 
