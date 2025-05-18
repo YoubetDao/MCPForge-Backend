@@ -193,26 +193,15 @@ export default function ServerDetailPage() {
             creator: "MCP forge",
             createdAt: new Date(card.created_at).toLocaleDateString(),
             tags: ["mcp", card.name.split("-")[0] || "server"],
+            github_url: card.github_url,
             // 处理markdown内容
-            overview:
-              typeof card.overview === "string"
-                ? card.overview
-                    .replace(/\\n/g, "\n")
-                    .replace(/^"/, "")
-                    .replace(/"$/, "")
-                : "No overview available",
-            tools:
-              typeof card.tools === "string"
-                ? (card.tools as string)
-                    .replace(/\\n/g, "\n")
-                    .replace(/^"/, "")
-                    .replace(/"$/, "") // Clean up any quotes and replace escaped newlines
-                : Object.entries(card.tools)
-                    .map(
-                      ([key, value]) =>
-                        `## ${key}\n\n${String(value).replace(/\\n/g, "\n")}`
-                    )
-                    .join("\n\n"),
+            overview: card.overview || "No overview available",
+            // 处理 tools 对象
+            tools: typeof card.tools === "string" 
+              ? card.tools
+              : Object.entries(card.tools || {})
+                  .map(([key, value]) => `## ${key}\n\n${value}`)
+                  .join("\n\n"),
             config: JSON.stringify(
               {
                 mcpServers: { [card.name]: { dockerImage: card.docker_image } },
@@ -240,6 +229,7 @@ export default function ServerDetailPage() {
             creator: "Unknown",
             createdAt: "N/A",
             tags: ["mcp", "unknown"],
+            github_url: `https://github.com/mcp-plugins/${slug.toLowerCase()}`,
             overview: "Information about this server is currently unavailable.",
             tools: "No tools information available.",
             config: JSON.stringify(
@@ -265,6 +255,7 @@ export default function ServerDetailPage() {
           creator: "Unknown",
           createdAt: "N/A",
           tags: ["mcp", "error"],
+          github_url: `https://github.com/mcp-plugins/${slug.toLowerCase()}`,
           overview: "There was an error loading information about this server.",
           tools: "No tools information available.",
           config: JSON.stringify(
@@ -437,7 +428,14 @@ export default function ServerDetailPage() {
         {/* Server header */}
         <div className="mb-8">
           <h1 className="text-4xl font-bold mb-4 font-cyberpunk text-transparent bg-clip-text bg-gradient-to-r from-cyan-600 to-pink-600 dark:from-cyan-400 dark:to-pink-500">
-            {server.title}
+            <a
+              href={server.github_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-2"
+            >
+              {server.title}
+            </a>
           </h1>
 
           <div className="flex items-center gap-4 mb-4 text-sm">
@@ -690,42 +688,45 @@ export default function ServerDetailPage() {
               </div>
             )}
 
-            <Button
-              className={`w-full mt-4 bg-gradient-to-r ${
-                isServerRunning
-                  ? "from-red-600 to-red-500 hover:from-red-500 hover:to-red-400"
-                  : "from-cyan-600 to-cyan-500 hover:from-cyan-500 hover:to-cyan-400"
-              } text-black font-cyberpunk border-0 h-12`}
-              onClick={handleServerAction}
-              disabled={isStartingServer || isPolling || isDeleting}
-            >
-              {isStartingServer ? (
-                <>
-                  <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                  Starting MCP Server...
-                </>
-              ) : isPolling ? (
-                <>
-                  <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                  Waiting for Server...
-                </>
-              ) : isDeleting ? (
-                <>
-                  <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                  Stopping MCP Server...
-                </>
-              ) : isServerRunning ? (
-                <>
-                  <ServerIcon className="mr-2 h-5 w-5" />
-                  Stop MCP Server
-                </>
-              ) : (
-                <>
-                  <ServerIcon className="mr-2 h-5 w-5" />
-                  Start MCP Server
-                </>
-              )}
-            </Button>
+            {/* 只在支付成功后显示启动/停止服务器按钮 */}
+            {(!showTransferButton || transactionHash) && (
+              <Button
+                className={`w-full mt-4 bg-gradient-to-r ${
+                  isServerRunning
+                    ? "from-red-600 to-red-500 hover:from-red-500 hover:to-red-400"
+                    : "from-cyan-600 to-cyan-500 hover:from-cyan-500 hover:to-cyan-400"
+                } text-black font-cyberpunk border-0 h-12`}
+                onClick={handleServerAction}
+                disabled={isStartingServer || isPolling || isDeleting}
+              >
+                {isStartingServer ? (
+                  <>
+                    <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                    Starting MCP Server...
+                  </>
+                ) : isPolling ? (
+                  <>
+                    <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                    Waiting for Server...
+                  </>
+                ) : isDeleting ? (
+                  <>
+                    <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                    Stopping MCP Server...
+                  </>
+                ) : isServerRunning ? (
+                  <>
+                    <ServerIcon className="mr-2 h-5 w-5" />
+                    Stop MCP Server
+                  </>
+                ) : (
+                  <>
+                    <ServerIcon className="mr-2 h-5 w-5" />
+                    Start MCP Server
+                  </>
+                )}
+              </Button>
+            )}
             {/* Show server start error if any */}
             {serverStartError && (
               <div className="mt-2 text-sm text-red-500 dark:text-red-400">
