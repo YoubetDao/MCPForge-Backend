@@ -88,14 +88,14 @@ export default function Home() {
         {/* Hero content */}
         <div className="container mx-auto px-4 relative z-1 flex flex-col items-center">
           {/* Server count badges */}
-          <div className="flex justify-center mb-6 gap-2">
+          {/* <div className="flex justify-center mb-6 gap-2">
             <span className="bg-gradient-to-r from-cyan-500/20 to-cyan-400/20 dark:from-cyan-900/50 dark:to-cyan-800/50 text-cyan-600 dark:text-cyan-400 px-3 py-1 rounded text-sm font-mono border border-cyan-500/30 dark:border-cyan-700/50 cyber-box">
               <span className="text-cyan-700 dark:text-white">131</span>KB
             </span>
             <span className="bg-gradient-to-r from-pink-500/20 to-pink-400/20 dark:from-pink-900/50 dark:to-pink-800/50 text-pink-600 dark:text-pink-400 px-3 py-1 rounded text-sm font-mono border border-pink-500/30 dark:border-pink-700/50 cyber-box">
               <span className="text-pink-700 dark:text-white">INDEXED</span>
             </span>
-          </div>
+          </div> */}
 
           {/* Main title */}
           <div className="flex flex-col items-center justify-center mb-4 relative">
