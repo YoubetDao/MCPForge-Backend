@@ -6,7 +6,7 @@
 
 **MCPForge** is a **crypto-native AI Agent tool marketplace** that transforms GitHub-based MCP Repos into instantly deployable, callable, and monetizable AI services.
 
-This project is an award-winning project in the ​Public Goods track​ of ​ETHBeijing2025, securing the ​runner-up position.
+This project is an award-winning project in the **Public Goods track** of **ETHBeijing2025**, securing the **runner-up position**.  
 Link: https://x.com/PKUBlockchain/status/1924055644652597559
 
 ## 🚀 Core Features
