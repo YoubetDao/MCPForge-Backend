@@ -2,13 +2,14 @@ import type React from "react"
 import type { Metadata } from "next"
 import { Inter, Share_Tech_Mono } from "next/font/google"
 import "./globals.css"
+import "@mysten/dapp-kit/dist/index.css"
 import { Providers } from "./providers"
 import { i18n } from "@/lib/i18n-config"
 import type { Locale } from "@/lib/i18n-config"
 import { getDictionary } from "@/lib/dictionary"
 import { LanguageProvider } from "@/lib/language-context"
 import { NextAuthProvider } from "@/components/next-auth-provider"
-import WalletProviderWrapper from "@/components/WalletProviderWrapper";
+import SuiProviders from "@/components/SuiProviders"
 
 const inter = Inter({ subsets: ["latin"] })
 
@@ -40,7 +41,7 @@ export default async function RootLayout({
         <NextAuthProvider>
           <Providers>
             <LanguageProvider initialLocale={defaultLocale} initialDictionary={dictionary}>
-              <WalletProviderWrapper>{children}</WalletProviderWrapper>
+              <SuiProviders>{children}</SuiProviders>
             </LanguageProvider>
           </Providers>
         </NextAuthProvider>

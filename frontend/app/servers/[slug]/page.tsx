@@ -16,7 +16,7 @@ import {
   PlayCircle,
   Loader2,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import {
   getMCPCards,
   startMCPServer,
@@ -26,11 +26,16 @@ import {
 } from "@/lib/api";
 import { distributor } from "@/lib/distributor";
 import ReactMarkdown from "react-markdown";
+import { Transaction } from '@mysten/sui/transactions';
+import { SuiClient } from '@mysten/sui/client';
+import { useCurrentAccount, useSignAndExecuteTransaction, useConnectWallet, useWallets } from '@mysten/dapp-kit';
+import '@mysten/dapp-kit/dist/index.css';
 
 // Add Ethereum to the window object type
 declare global {
   interface Window {
     ethereum?: any;
+    suiWallet?: any;
   }
 }
 
@@ -52,6 +57,18 @@ export default function ServerDetailPage() {
   const [isServerRunning, setIsServerRunning] = useState(false);
   const [serverPhase, setServerPhase] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  // 使用 dapp-kit 的钱包连接器
+  const currentAccount = useCurrentAccount();
+  const { mutate: signAndExecuteTransaction } = useSignAndExecuteTransaction();
+  const { mutate: connectWallet } = useConnectWallet();
+  const wallets = useWallets();
+  
+  // 计算 Sui 探索器 URL
+  const explorerUrl = useMemo(() => {
+    if (!transactionHash) return '';
+    return `https://suiexplorer.com/txblock/${transactionHash}?network=testnet`;
+  }, [transactionHash]);
 
   // 检查服务器状态
   useEffect(() => {
@@ -165,6 +182,122 @@ export default function ServerDetailPage() {
     const tx = await distributor.createRedPacket(id, githubIds, amountsInWei);
     setTransactionHash(tx.hash);
     setIsTransactionPending(false);
+  };
+
+  const handleTransferSui = async () => {
+    setTransactionError(null);
+    setTransactionHash(null);
+    setIsWalletConnecting(true);
+
+    // 如果未连接钱包，尝试连接
+    if (!currentAccount) {
+      try {
+        console.log("尝试连接钱包...");
+        console.log("可用钱包:", wallets.map(w => w.name).join(', '));
+
+        // 检查是否有可用钱包
+        if (wallets.length === 0) {
+          setTransactionError("No Sui wallets found. Please install a Sui wallet extension first.");
+          setIsWalletConnecting(false);
+          return;
+        }
+
+        // 尝试连接第一个可用的钱包
+        await new Promise<void>((resolve, reject) => {
+          connectWallet(
+            { wallet: wallets[0] },
+            {
+              onSuccess: () => {
+                console.log("钱包连接成功");
+                resolve();
+              },
+              onError: (error) => {
+                console.error("钱包连接失败:", error);
+                reject(error);
+              }
+            }
+          );
+        });
+        
+        // 连接成功后等待短暂时间以确保 currentAccount 已更新
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        // 如果仍然没有连接，显示错误
+        if (!currentAccount) {
+          setTransactionError("Wallet connection was not completed. Please try again or connect manually.");
+          setIsWalletConnecting(false);
+          return;
+        }
+      } catch (error: any) {
+        console.error("钱包连接错误:", error);
+        setTransactionError(error.message || "Failed to connect wallet");
+        setIsWalletConnecting(false);
+        return;
+      }
+    }
+
+    // 继续执行交易...
+    try {
+      setIsWalletConnecting(false);
+      setIsTransactionPending(true);
+
+      // 创建 Sui 客户端
+      const client = new SuiClient({
+        url: 'https://fullnode.testnet.sui.io:443'
+      });
+
+      // mock github 用户和金额
+      const users = [{ login: "wfnuser" }, { login: "null" }];
+      const amounts = [1, 2];
+
+      // 创建交易
+      const tx = new Transaction();
+      
+      // 添加转账操作 - 使用 PaySui 模式（从 gas 对象拆分并转账）
+      // 这里转账 1 SUI（转换为最小单位是 1 * 10^9）
+      const [coin] = tx.splitCoins(tx.gas, [1000000000]);
+      
+      // 转到特定地址 - 这里应该是项目方或合约的地址
+      tx.transferObjects([coin], "0x5ea6aee5c032a14c417ee07cb1d48a8c3f65f92d03eaaa42864042a4d8d43ec8");
+      
+      // 设置 gas 预算
+      tx.setGasBudget(10000000);
+      
+      // 构建交易字节
+      const txBytes = await tx.build({ client });
+
+      // 使用钱包签名并执行交易
+      const result = await new Promise<string>((resolve, reject) => {
+        signAndExecuteTransaction(
+          {
+            transaction: tx,
+          },
+          {
+            onSuccess: (response) => {
+              if (response && response.digest) {
+                resolve(response.digest);
+              } else {
+                reject(new Error('Transaction failed: No digest returned'));
+              }
+            },
+            onError: (error) => {
+              reject(error);
+            }
+          }
+        );
+      });
+
+      setTransactionHash(result);
+      setIsTransactionPending(false);
+      
+      // 一旦支付成功，就不再显示转账按钮
+      setShowTransferButton(false);
+      
+    } catch (error: any) {
+      console.error("Transaction error:", error);
+      setTransactionError(error.message || "Transaction failed");
+      setIsTransactionPending(false);
+    }
   };
 
   // 修改loadMCPCardData函数中处理服务器数据的部分
@@ -631,11 +764,55 @@ export default function ServerDetailPage() {
 
           {/* Sidebar */}
           <div className="space-y-6">
+            {/* 显示钱包连接状态和按钮 */}
+            <Card className="bg-black border border-gray-200 dark:border-cyan-900/50 overflow-hidden">
+              <div className="absolute top-0 left-0 w-full h-0.5 bg-gradient-to-r from-transparent via-cyan-500 to-transparent"></div>
+              <div className="absolute bottom-0 left-0 w-full h-0.5 bg-gradient-to-r from-transparent via-pink-500 to-transparent"></div>
+
+              <CardContent className="p-0">
+                <div className="p-4 border-b border-gray-200 dark:border-gray-800">
+                  <h3 className="font-bold text-gray-800 dark:text-gray-100 flex items-center justify-between">
+                    Sui Wallet status
+                  </h3>
+                </div>
+
+                <div className="p-4">
+                  {currentAccount ? (
+                    <div className="text-cyan-600 dark:text-cyan-400 font-mono">
+                      <p className="break-all flex items-center">
+                        <span className="inline-block w-3 h-3 bg-green-500 mr-2 rounded-full"></span>
+                        Connected: {currentAccount.address.slice(0, 6)}...{currentAccount.address.slice(-4)}
+                      </p>
+                    </div>
+                  ) : (
+                      <div className="flex flex-wrap items-center gap-4">
+                        <p className="text-yellow-600 dark:text-yellow-400 font-mono flex items-center mb-0">
+                          <span className="inline-block w-3 h-3 bg-yellow-500 mr-2 rounded-full"></span>
+                          Not Connected
+                        </p>
+                        <Button
+                          className="ml-auto bg-gradient-to-r from-cyan-500 to-pink-500 hover:from-cyan-400 hover:to-pink-400 text-black font-cyberpunk border-0 h-12"
+                          onClick={() => {
+                            if (wallets.length > 0) {
+                              connectWallet({ wallet: wallets[0] });
+                            } else {
+                              alert("Sui wallet not detected. Please install a Sui wallet extension such as Sui Wallet or Suiet.");
+                            }
+                          }}
+                        >
+                          Connect your wallet
+                        </Button>
+                      </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+
             {/* Transfer ETH button - 只在服务器不存在且未进行支付时显示 */}
             {showTransferButton && !transactionHash && (
               <Button
                 className="w-full bg-gradient-to-r from-cyan-500 to-pink-500 hover:from-cyan-400 hover:to-pink-400 text-black font-cyberpunk border-0 h-12"
-                onClick={handleTransferEth}
+                onClick={handleTransferSui}
                 disabled={isWalletConnecting || isTransactionPending}
               >
                 {isWalletConnecting ? (
@@ -668,7 +845,7 @@ export default function ServerDetailPage() {
             {transactionHash && (
               <div className="mt-2 text-sm text-green-600 dark:text-green-400">
                 <a
-                  href={`https://optimism-sepolia.blockscout.com/tx/${transactionHash}`}
+                  href={explorerUrl}
                   target="_blank"
                   rel="noopener noreferrer"
                 >
