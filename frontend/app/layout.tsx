@@ -8,6 +8,7 @@ import type { Locale } from "@/lib/i18n-config"
 import { getDictionary } from "@/lib/dictionary"
 import { LanguageProvider } from "@/lib/language-context"
 import { NextAuthProvider } from "@/components/next-auth-provider"
+import WalletProviderWrapper from "@/components/WalletProviderWrapper";
 
 const inter = Inter({ subsets: ["latin"] })
 
@@ -22,7 +23,6 @@ const shareTechMono = Share_Tech_Mono({
 export const metadata: Metadata = {
   title: "MCP forge - Find Awesome MCP Servers and Clients",
   description: "The largest collection of MCP Servers.",
-    generator: 'v0.dev'
 }
 
 export default async function RootLayout({
@@ -40,7 +40,7 @@ export default async function RootLayout({
         <NextAuthProvider>
           <Providers>
             <LanguageProvider initialLocale={defaultLocale} initialDictionary={dictionary}>
-              {children}
+              <WalletProviderWrapper>{children}</WalletProviderWrapper>
             </LanguageProvider>
           </Providers>
         </NextAuthProvider>

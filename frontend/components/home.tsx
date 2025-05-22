@@ -14,6 +14,7 @@ import { useLanguage } from "@/lib/language-context"
 import { useEffect, useState } from "react"
 import { getMCPCards } from "@/lib/api"
 import type { MCPCard } from "@/types/mcpcard"
+import { ConnectButton } from "@suiet/wallet-kit"
 
 export default function Home() {
   // 使用语言上下文获取当前语言和字典
@@ -68,7 +69,8 @@ export default function Home() {
             >
               {dict.nav.submit}
             </Link>
-            <AuthButton dict={dict.auth} />
+            {/* <AuthButton dict={dict.auth} /> */}
+            <ConnectButton />
           </div>
         </div>
       </nav>
