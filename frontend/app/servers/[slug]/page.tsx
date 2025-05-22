@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import Link from "next/link";
+// import { Transaction } from '@mysten/sui/transactions';
 import {
   Home,
   Copy,
@@ -29,6 +30,7 @@ import ReactMarkdown from "react-markdown";
 import { Transaction } from '@mysten/sui/transactions';
 import { SuiClient } from '@mysten/sui/client';
 import { useCurrentAccount, useSignAndExecuteTransaction, useConnectWallet, useWallets } from '@mysten/dapp-kit';
+// import { WebCryptoSigner } from '@mysten/signers/webcrypto';
 import '@mysten/dapp-kit/dist/index.css';
 
 // Add Ethereum to the window object type
@@ -218,10 +220,10 @@ export default function ServerDetailPage() {
             }
           );
         });
-        
+
         // 连接成功后等待短暂时间以确保 currentAccount 已更新
         await new Promise(resolve => setTimeout(resolve, 500));
-        
+
         // 如果仍然没有连接，显示错误
         if (!currentAccount) {
           setTransactionError("Wallet connection was not completed. Please try again or connect manually.");
@@ -245,28 +247,27 @@ export default function ServerDetailPage() {
       const client = new SuiClient({
         url: 'https://fullnode.testnet.sui.io:443'
       });
-
-      // mock github 用户和金额
-      const users = [{ login: "wfnuser" }, { login: "null" }];
-      const amounts = [1, 2];
-
-      // 创建交易
       const tx = new Transaction();
-      
-      // 添加转账操作 - 使用 PaySui 模式（从 gas 对象拆分并转账）
-      // 这里转账 1 SUI（转换为最小单位是 1 * 10^9）
-      const [coin] = tx.splitCoins(tx.gas, [1000000000]);
-      
-      // 转到特定地址 - 这里应该是项目方或合约的地址
-      tx.transferObjects([coin], "0x5ea6aee5c032a14c417ee07cb1d48a8c3f65f92d03eaaa42864042a4d8d43ec8");
-      
-      // 设置 gas 预算
-      tx.setGasBudget(10000000);
-      
-      // 构建交易字节
-      const txBytes = await tx.build({ client });
-
-      // 使用钱包签名并执行交易
+      const packageId = "0xe0db550526f7b03c9a282d636a8fb4c4763302d65a9fed7696cd4615cb98ab40"
+      const moduleId = "distributor"
+      const functionId = "create_red_packet"
+      const stateId = "0x8069cd532621de0508c25ba72b3440e9aed09fc8b65a99957b79a319705f4e22"
+      const hasBalanceCoinObjectId = "0x95c1c659eaf7d38787d4f2a90c69fe3a8c44a4cc2425a88dce19c8215a713493"
+      var uuid = "1234567890" + Math.random().toString(36).substring(2, 15);
+      var githubids = ["githubuser1", "githubuser2"]
+      var amounts = [10, 10]
+      var args = [
+        tx.object(stateId),
+        tx.pure.string(uuid),
+        tx.pure.vector('string', githubids),
+        tx.pure.vector('u64', amounts),
+        tx.object(hasBalanceCoinObjectId)
+      ]
+      tx.moveCall({
+        target: `${packageId}::${moduleId}::${functionId}`,
+        // object IDs must be wrapped in moveCall arguments
+        arguments: args,
+      });
       const result = await new Promise<string>((resolve, reject) => {
         signAndExecuteTransaction(
           {
@@ -289,10 +290,10 @@ export default function ServerDetailPage() {
 
       setTransactionHash(result);
       setIsTransactionPending(false);
-      
+
       // 一旦支付成功，就不再显示转账按钮
       setShowTransferButton(false);
-      
+
     } catch (error: any) {
       console.error("Transaction error:", error);
       setTransactionError(error.message || "Transaction failed");
