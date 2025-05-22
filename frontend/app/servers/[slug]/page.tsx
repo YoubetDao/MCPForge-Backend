@@ -220,10 +220,10 @@ export default function ServerDetailPage() {
             }
           );
         });
-        
+
         // 连接成功后等待短暂时间以确保 currentAccount 已更新
         await new Promise(resolve => setTimeout(resolve, 500));
-        
+
         // 如果仍然没有连接，显示错误
         if (!currentAccount) {
           setTransactionError("Wallet connection was not completed. Please try again or connect manually.");
@@ -244,7 +244,6 @@ export default function ServerDetailPage() {
       setIsTransactionPending(true);
 
       // 创建 Sui 客户端
-      // doc: 
       const client = new SuiClient({
         url: 'https://fullnode.testnet.sui.io:443'
       });
@@ -258,11 +257,11 @@ export default function ServerDetailPage() {
       var githubids = ["githubuser1", "githubuser2"]
       var amounts = [10, 10]
       var args = [
-        stateId,
-        uuid,
-        githubids,
-        amounts,
-        hasBalanceCoinObjectId
+        tx.object(stateId),
+        tx.pure.string(uuid),
+        tx.pure.vector('string', githubids),
+        tx.pure.vector('u64', amounts),
+        tx.object(hasBalanceCoinObjectId)
       ]
       tx.moveCall({
         target: `${packageId}::${moduleId}::${functionId}`,
@@ -288,59 +287,13 @@ export default function ServerDetailPage() {
           }
         );
       });
-      // client.signAndExecuteTransaction({ signer: keypair, transaction: tx });
-      // new client call
-      // const tx = await client.moveCall({
-      // console.log("tx:", tx);
-
-
-      // mock github 用户和金额
-      // const users = [{ login: "wfnuser" }, { login: "null" }];
-      // const amounts = [1, 2];
-
-      // // 创建交易
-      // const tx = new Transaction();
-      
-      // // 添加转账操作 - 使用 PaySui 模式（从 gas 对象拆分并转账）
-      // // 这里转账 1 SUI（转换为最小单位是 1 * 10^9）
-      // const [coin] = tx.splitCoins(tx.gas, [1000000000]);
-      
-      // // 转到特定地址 - 这里应该是项目方或合约的地址
-      // tx.transferObjects([coin], "0x5ea6aee5c032a14c417ee07cb1d48a8c3f65f92d03eaaa42864042a4d8d43ec8");
-      
-      // // 设置 gas 预算
-      // tx.setGasBudget(10000000);
-      
-      // // 构建交易字节
-      // const txBytes = await tx.build({ client });
-
-      // 使用钱包签名并执行交易
-      // const result = await new Promise<string>((resolve, reject) => {
-      //   signAndExecuteTransaction(
-      //     {
-      //       transaction: tx,
-      //     },
-      //     {
-      //       onSuccess: (response) => {
-      //         if (response && response.digest) {
-      //           resolve(response.digest);
-      //         } else {
-      //           reject(new Error('Transaction failed: No digest returned'));
-      //         }
-      //       },
-      //       onError: (error) => {
-      //         reject(error);
-      //       }
-      //     }
-      //   );
-      // });
 
       setTransactionHash(result);
       setIsTransactionPending(false);
-      
+
       // 一旦支付成功，就不再显示转账按钮
       setShowTransferButton(false);
-      
+
     } catch (error: any) {
       console.error("Transaction error:", error);
       setTransactionError(error.message || "Transaction failed");
