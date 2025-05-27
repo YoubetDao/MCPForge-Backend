@@ -18,8 +18,8 @@ const nextConfig = {
     const apiUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
     return [
       {
-        source: '/:path*',
-        destination: `${apiUrl}/:path*`,
+        source: '/api/:path*',
+        destination: `${apiUrl}/api/:path*`,
       },
     ];
   },
