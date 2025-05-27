@@ -6,8 +6,7 @@
 
 **MCPForge** is a **crypto-native AI Agent tool marketplace** that transforms GitHub-based MCP Repos into instantly deployable, callable, and monetizable AI services.
 
-This project is an award-winning project in the **Public Goods track** of **ETHBeijing2025**, securing the **runner-up position**.  
-Link: https://x.com/PKUBlockchain/status/1924055644652597559
+Starknet Sepolia Contract Address: 0x01ab41d2b6b66a0c45ce704312b7c8a66e0e2593943c422812be80027c24e909
 
 ## 🚀 Core Features
 
@@ -56,3 +55,8 @@ A world where:
 - Every AI Agent can access a **decentralized library of callable intelligence**
 
 We believe AI + GitHub + crypto can create a new open economy of intelligence — and MCPForge is the gateway.
+
+## 🏆 Recognition
+
+This project is an award-winning project in the **Public Goods track** of **ETHBeijing2025**, securing the **runner-up position**.  
+Link: https://x.com/PKUBlockchain/status/1924055644652597559
