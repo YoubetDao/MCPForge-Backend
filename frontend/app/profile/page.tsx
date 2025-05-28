@@ -1,52 +1,28 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { useSession } from "next-auth/react"
+import { useAccount } from "wagmi"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Separator } from "@/components/ui/separator"
-import { Loader2, Server, Plus, Edit, ExternalLink } from "lucide-react"
+import { Loader2, Server, Plus, Edit, ExternalLink, Wallet } from "lucide-react"
 import Link from "next/link"
+import { useConnectModal } from "@rainbow-me/rainbowkit"
 
 export default function ProfilePage() {
-  const { data: session, status } = useSession()
-  const [mockUser, setMockUser] = useState<any>(null)
+  const { isConnected, address } = useAccount()
+  const { openConnectModal } = useConnectModal()
   const [isLoading, setIsLoading] = useState(true)
 
-  // 在组件挂载时检查localStorage中的模拟用户
+  // 模拟加载状态
   useEffect(() => {
-    const checkMockUser = () => {
-      try {
-        const storedUser = localStorage.getItem("mockUser")
-        if (storedUser) {
-          setMockUser(JSON.parse(storedUser))
-        }
-      } catch (error) {
-        console.error("Error reading mock user:", error)
-      } finally {
-        setIsLoading(false)
-      }
-    }
+    const timer = setTimeout(() => {
+      setIsLoading(false)
+    }, 1000)
 
-    // 初始检查
-    checkMockUser()
-
-    // 监听模拟登录状态变化
-    const handleAuthChange = () => {
-      checkMockUser()
-    }
-
-    window.addEventListener("mock-auth-change", handleAuthChange)
-
-    return () => {
-      window.removeEventListener("mock-auth-change", handleAuthChange)
-    }
+    return () => clearTimeout(timer)
   }, [])
-
-  // 优先使用模拟用户，如果没有则使用session
-  const user = mockUser || session?.user
-  const isAuthenticated = status === "authenticated" || !!mockUser
 
   // 如果正在加载，显示加载状态
   if (isLoading) {
@@ -61,27 +37,16 @@ export default function ProfilePage() {
   }
 
   // 获取用户头像的初始字母（用于头像回退）
-  const getInitials = (name = "User") => {
-    return name
-      .split(" ")
-      .map((part) => part[0])
-      .join("")
-      .toUpperCase()
-      .substring(0, 2)
+  const getInitials = (address: string) => {
+    return address.substring(2, 4).toUpperCase()
   }
 
   // 模拟用户的MCP服务器数据
   const mockServers = []
 
-  // 创建默认用户数据，当用户未登录时使用
-  const defaultUser = {
-    name: "Guest User",
-    email: "Not signed in",
-    image: "",
-  }
-
-  // 使用实际用户数据或默认数据
-  const displayUser = user || defaultUser
+  // 格式化地址显示
+  const displayName = address ? `${address.substring(0, 6)}...${address.substring(address.length - 4)}` : "Guest User"
+  const displayEmail = address || "Not connected"
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-black text-gray-800 dark:text-gray-300">
@@ -104,31 +69,31 @@ export default function ProfilePage() {
 
               <CardHeader className="flex flex-col items-center">
                 <Avatar className="h-24 w-24 mb-4 border-2 border-cyan-500/50">
-                  <AvatarImage src={displayUser?.image || ""} alt={displayUser?.name || "User"} />
+                  <AvatarImage src={`/api/avatar?address=${address}`} alt={displayName} />
                   <AvatarFallback className="bg-gradient-to-br from-cyan-500 to-pink-500 text-black font-bold">
-                    {displayUser?.name ? getInitials(displayUser.name) : "U"}
+                    {address ? getInitials(address) : <Wallet className="h-8 w-8" />}
                   </AvatarFallback>
                 </Avatar>
                 <CardTitle className="text-xl font-cyberpunk text-gray-800 dark:text-gray-100">
-                  {displayUser?.name}
+                  {displayName}
                 </CardTitle>
                 <CardDescription className="text-gray-600 dark:text-gray-400 font-mono">
-                  {displayUser?.email}
+                  {displayEmail}
                 </CardDescription>
 
-                {!isAuthenticated && (
+                {!isConnected && (
                   <div className="mt-4 w-full">
                     <Button
                       className="w-full bg-gradient-to-r from-cyan-500 to-pink-500 hover:from-cyan-400 hover:to-pink-400 text-black font-cyberpunk border-0"
-                      asChild
+                      onClick={() => openConnectModal?.()}
                     >
-                      <Link href="/auth/signin?callbackUrl=/profile">Sign In to Access Your Profile</Link>
+                      Connect Wallet to Access Profile
                     </Button>
                   </div>
                 )}
               </CardHeader>
 
-              {isAuthenticated && (
+              {isConnected && (
                 <CardContent className="space-y-4">
                   <Button
                     variant="outline"
@@ -143,9 +108,9 @@ export default function ProfilePage() {
                   <div className="space-y-2">
                     <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300">Account Info</h3>
                     <div className="text-sm text-gray-600 dark:text-gray-400 space-y-1 font-mono">
-                      <p>Member since: May 2023</p>
-                      <p>Status: Active</p>
-                      <p>Role: User</p>
+                      <p>Wallet: {address}</p>
+                      <p>Status: Connected</p>
+                      <p>Type: Web3 User</p>
                     </div>
                   </div>
                 </CardContent>
@@ -169,7 +134,7 @@ export default function ProfilePage() {
                       Servers you've submitted to MCP forge
                     </CardDescription>
                   </div>
-                  {isAuthenticated && (
+                  {isConnected && (
                     <Button
                       className="bg-gradient-to-r from-cyan-500 to-pink-500 hover:from-cyan-400 hover:to-pink-400 text-black font-cyberpunk border-0"
                       asChild
@@ -184,34 +149,46 @@ export default function ProfilePage() {
               </CardHeader>
 
               <CardContent>
-                {!isAuthenticated ? (
+                {!isConnected ? (
                   <div className="text-center py-10">
                     <Server className="h-16 w-16 text-gray-400 dark:text-gray-600 mx-auto mb-4" />
                     <p className="text-gray-600 dark:text-gray-400 mb-4">
-                      Sign in to view and manage your MCP servers.
+                      Connect your wallet to view and manage your MCP servers.
                     </p>
                     <Button
                       className="bg-gradient-to-r from-cyan-500 to-pink-500 hover:from-cyan-400 hover:to-pink-400 text-black font-cyberpunk border-0"
-                      asChild
+                      onClick={() => openConnectModal?.()}
                     >
-                      <Link href="/auth/signin?callbackUrl=/profile">Sign In</Link>
+                      Connect Wallet
                     </Button>
                   </div>
                 ) : mockServers.length > 0 ? (
-                  <div className="grid grid-cols-1 gap-4">
-                    {mockServers.map((server, index) => (
+                  <div className="space-y-4">
+                    {mockServers.map((server: any, index: number) => (
                       <div
                         key={index}
-                        className="p-4 border border-gray-200 dark:border-cyan-900/50 rounded-md bg-gray-50 dark:bg-black/60 hover:border-cyan-500/50 transition-colors"
+                        className="border border-gray-200 dark:border-cyan-900/30 rounded-lg p-4 hover:border-cyan-500/50 transition-colors"
                       >
                         <div className="flex justify-between items-start">
                           <div>
-                            <h3 className="font-bold text-gray-800 dark:text-gray-200">{server.title}</h3>
+                            <h3 className="font-semibold text-gray-800 dark:text-gray-100">{server.name}</h3>
                             <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{server.description}</p>
+                            <div className="flex items-center mt-2 space-x-4 text-xs text-gray-500 dark:text-gray-500">
+                              <span>⭐ {server.stars} stars</span>
+                              <span>📥 {server.downloads} downloads</span>
+                              <span>🔄 Updated {server.lastUpdated}</span>
+                            </div>
                           </div>
-                          <Button variant="ghost" size="sm" className="text-cyan-600 dark:text-cyan-400">
-                            <ExternalLink className="h-4 w-4" />
-                          </Button>
+                          <div className="flex space-x-2">
+                            <Button variant="outline" size="sm">
+                              <Edit className="h-3 w-3" />
+                            </Button>
+                            <Button variant="outline" size="sm" asChild>
+                              <Link href={server.url} target="_blank">
+                                <ExternalLink className="h-3 w-3" />
+                              </Link>
+                            </Button>
+                          </div>
                         </div>
                       </div>
                     ))}
@@ -219,9 +196,8 @@ export default function ProfilePage() {
                 ) : (
                   <div className="text-center py-10">
                     <Server className="h-16 w-16 text-gray-400 dark:text-gray-600 mx-auto mb-4" />
-                    <p className="text-gray-600 dark:text-gray-400 mb-4">You haven't submitted any MCP servers yet.</p>
-                    <p className="text-gray-600 dark:text-gray-400 mb-6">
-                      Share your MCP server with the community to get more visibility and users.
+                    <p className="text-gray-600 dark:text-gray-400 mb-4">
+                      You haven't submitted any MCP servers yet.
                     </p>
                     <Button
                       className="bg-gradient-to-r from-cyan-500 to-pink-500 hover:from-cyan-400 hover:to-pink-400 text-black font-cyberpunk border-0"
@@ -238,34 +214,6 @@ export default function ProfilePage() {
             </Card>
           </div>
         </div>
-
-        {/* Activity Section - Only show for authenticated users */}
-        {isAuthenticated && (
-          <div className="mt-6">
-            <Card className="bg-white dark:bg-black border border-gray-200 dark:border-cyan-900/50 overflow-hidden">
-              <div className="absolute top-0 left-0 w-full h-0.5 bg-gradient-to-r from-transparent via-cyan-500 to-transparent"></div>
-              <div className="absolute bottom-0 left-0 w-full h-0.5 bg-gradient-to-r from-transparent via-pink-500 to-transparent"></div>
-
-              <CardHeader>
-                <CardTitle className="text-xl font-cyberpunk text-gray-800 dark:text-gray-100">
-                  RECENT ACTIVITY
-                </CardTitle>
-                <CardDescription className="text-gray-600 dark:text-gray-400">
-                  Your recent interactions on MCP forge
-                </CardDescription>
-              </CardHeader>
-
-              <CardContent>
-                <div className="text-center py-8">
-                  <p className="text-gray-600 dark:text-gray-400">No recent activity to display.</p>
-                  <p className="text-gray-600 dark:text-gray-400 mt-2">
-                    Start exploring MCP servers to see your activity here.
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        )}
       </div>
     </div>
   )
