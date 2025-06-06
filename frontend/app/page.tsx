@@ -1,5 +1,5 @@
 "use client"
-import { useLanguage } from "@/lib/language-context"
+import { useLanguage } from "@/components/language-context"
 import Home from "@/components/home"
 
 export default function Page() {

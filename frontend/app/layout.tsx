@@ -7,7 +7,7 @@ import { Providers } from "./providers"
 import { i18n } from "@/lib/i18n-config"
 import type { Locale } from "@/lib/i18n-config"
 import { getDictionary } from "@/lib/dictionary"
-import { LanguageProvider } from "@/lib/language-context"
+import { LanguageProvider } from "@/components/language-context"
 import { NextAuthProvider } from "@/components/next-auth-provider"
 import SuiProviders from "@/components/SuiProviders"
 

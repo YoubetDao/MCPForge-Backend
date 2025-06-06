@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { useLanguage } from "@/lib/language-context"
+import { useLanguage } from "@/components/language-context"
 
 export default function Logo() {
   const { locale } = useLanguage()

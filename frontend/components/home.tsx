@@ -4,12 +4,11 @@ import { Search } from "lucide-react"
 import Link from "next/link"
 import ServerCard from "@/components/server-card"
 import CategoryTabs from "@/components/category-tabs"
-import AuthButton from "@/components/auth-button"
 import NewsletterSignup from "@/components/newsletter-signup"
 import LanguageSwitcher from "@/components/language-switcher"
 import Logo from "@/components/logo"
 import { ThemeToggle } from "@/components/theme-toggle"
-import { useLanguage } from "@/lib/language-context"
+import { useLanguage } from "@/components/language-context"
 
 import { useEffect, useState } from "react"
 import { getMCPCards } from "@/lib/api"
@@ -70,7 +69,6 @@ export default function Home() {
             >
               {dict.nav.submit}
             </Link>
-            {/* <AuthButton dict={dict.auth} /> */}
             <ConnectButton 
               className="bg-gradient-to-r from-cyan-500 to-pink-500 hover:from-cyan-400 hover:to-pink-400"
               style={{ 

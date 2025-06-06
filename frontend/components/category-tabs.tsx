@@ -2,7 +2,7 @@
 
 import { FlameIcon as Fire, Clock, Users, Server, Award, Lightbulb } from "lucide-react"
 import Link from "next/link"
-import { useLanguage } from "@/lib/language-context"
+import { useLanguage } from "@/components/language-context"
 
 interface CategoryTabsProps {
   dict: {

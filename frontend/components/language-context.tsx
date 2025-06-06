@@ -2,8 +2,8 @@
 
 import type React from "react"
 import { createContext, useContext, useState, useEffect } from "react"
-import type { Locale } from "./i18n-config"
-import { i18n } from "./i18n-config"
+import type { Locale } from "../lib/i18n-config"
+import { i18n } from "../lib/i18n-config"
 
 // 预定义字典加载函数
 const dictionaries = {

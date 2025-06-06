@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { ChevronDown } from "lucide-react"
-import { useLanguage } from "@/lib/language-context"
+import { useLanguage } from "@/components/language-context"
 import type { Locale } from "@/lib/i18n-config"
 
 export default function LanguageSwitcher() {
