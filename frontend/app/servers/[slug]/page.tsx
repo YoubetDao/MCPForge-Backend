@@ -258,11 +258,11 @@ export default function ServerDetailPage() {
       var githubids = ["githubuser1", "githubuser2"]
       var amounts = [10, 10]
       var args = [
-        stateId,
-        uuid,
-        githubids,
-        amounts,
-        hasBalanceCoinObjectId
+        tx.object(stateId),
+        tx.pure.string(uuid),
+        tx.pure.vector('string', githubids),
+        tx.pure.vector('u64', amounts),
+        tx.object(hasBalanceCoinObjectId)
       ]
       tx.moveCall({
         target: `${packageId}::${moduleId}::${functionId}`,
