@@ -15,10 +15,10 @@ NC='\033[0m' # No Color
 # Configuration
 TEST_ENV_FILE="test.env"
 DB_NAME="mcpforge_test"
-DB_USER="mcpforge_test"
-DB_PASSWORD="test_password"
+DB_USER="postgres"
+DB_PASSWORD="postgres"
 DB_HOST="localhost"
-DB_PORT="5432"
+DB_PORT="5433"
 
 # Function to print colored output
 print_status() {
@@ -52,8 +52,8 @@ check_dependencies() {
         missing_deps+=("node")
     fi
     
-    if ! command_exists "npm"; then
-        missing_deps+=("npm")
+    if ! command_exists "pnpm"; then
+        missing_deps+=("pnpm")
     fi
     
     if ! command_exists "psql"; then
@@ -106,39 +106,35 @@ setup_test_database() {
         exit 1
     fi
     
-    # Create test database if it doesn't exist
-    if ! psql -h $DB_HOST -p $DB_PORT -U postgres -lqt | cut -d \| -f 1 | grep -qw $DB_NAME; then
-        print_status "Creating test database '$DB_NAME'..."
-        createdb -h $DB_HOST -p $DB_PORT -U postgres $DB_NAME
-        print_success "Test database created"
-    else
-        print_status "Test database '$DB_NAME' already exists"
+    # Drop test database if it exists (clean start)
+    if psql -h $DB_HOST -p $DB_PORT -U $DB_USER -lqt | cut -d \| -f 1 | grep -qw $DB_NAME; then
+        print_status "Dropping existing test database '$DB_NAME'..."
+        dropdb -h $DB_HOST -p $DB_PORT -U $DB_USER $DB_NAME
+        print_success "Existing test database dropped"
     fi
     
-    # Create test user if it doesn't exist
-    if ! psql -h $DB_HOST -p $DB_PORT -U postgres -t -c "SELECT 1 FROM pg_roles WHERE rolname='$DB_USER'" | grep -q 1; then
-        print_status "Creating test user '$DB_USER'..."
-        psql -h $DB_HOST -p $DB_PORT -U postgres -c "CREATE USER $DB_USER WITH PASSWORD '$DB_PASSWORD';"
-        psql -h $DB_HOST -p $DB_PORT -U postgres -c "GRANT ALL PRIVILEGES ON DATABASE $DB_NAME TO $DB_USER;"
-        print_success "Test user created"
-    else
-        print_status "Test user '$DB_USER' already exists"
-    fi
+    # Create fresh test database
+    print_status "Creating test database '$DB_NAME'..."
+    createdb -h $DB_HOST -p $DB_PORT -U $DB_USER $DB_NAME
+    print_success "Test database created"
     
     print_success "Test database setup complete"
 }
 
-# Function to install dependencies
-install_dependencies() {
-    print_status "Installing dependencies..."
+# Function to setup environment and install dependencies
+setup_environment() {
+    print_status "Setting up test environment..."
     
-    if [ -f "package-lock.json" ]; then
-        npm ci
+    # Run the environment setup script
+    if [ -f "scripts/setup-test-env.sh" ]; then
+        chmod +x scripts/setup-test-env.sh
+        ./scripts/setup-test-env.sh
     else
-        npm install
+        print_error "Environment setup script not found!"
+        exit 1
     fi
     
-    print_success "Dependencies installed"
+    print_success "Environment setup completed"
 }
 
 # Function to run database migrations
@@ -149,7 +145,7 @@ run_migrations() {
     export DATABASE_URL="postgresql://$DB_USER:$DB_PASSWORD@$DB_HOST:$DB_PORT/$DB_NAME"
     
     # Run migrations
-    npm run migration:run
+    pnpm run migration:run
     
     print_success "Database migrations completed"
 }
@@ -159,7 +155,7 @@ run_unit_tests() {
     print_status "Running unit tests..."
     
     # Run Jest unit tests
-    npm test -- --testPathPattern="src/.*\.spec\.ts$" --verbose
+    pnpm test -- --testPathPattern="src/.*\.spec\.ts$" --verbose
     
     if [ $? -eq 0 ]; then
         print_success "Unit tests passed"
@@ -179,7 +175,7 @@ run_integration_tests() {
     export DATABASE_URL="postgresql://$DB_USER:$DB_PASSWORD@$DB_HOST:$DB_PORT/$DB_NAME"
     
     # Run e2e tests
-    npm run test:e2e
+    pnpm run test:e2e
     
     if [ $? -eq 0 ]; then
         print_success "Integration tests passed"
@@ -196,7 +192,7 @@ run_manual_api_tests() {
     
     # Start the application in background
     print_status "Starting test server..."
-    npm run start:dev &
+    pnpm run start:dev &
     SERVER_PID=$!
     
     # Wait for server to start
@@ -256,17 +252,16 @@ run_manual_api_tests() {
 cleanup_test_data() {
     print_status "Cleaning up test data..."
     
-    # Drop test database
-    if psql -h $DB_HOST -p $DB_PORT -U postgres -lqt | cut -d \| -f 1 | grep -qw $DB_NAME; then
-        dropdb -h $DB_HOST -p $DB_PORT -U postgres $DB_NAME
+    # Drop the entire test database
+    if psql -h $DB_HOST -p $DB_PORT -U $DB_USER -lqt | cut -d \| -f 1 | grep -qw $DB_NAME; then
+        print_status "Dropping test database '$DB_NAME'..."
+        dropdb -h $DB_HOST -p $DB_PORT -U $DB_USER $DB_NAME
         print_success "Test database dropped"
+    else
+        print_status "Test database '$DB_NAME' not found"
     fi
     
-    # Remove test user
-    if psql -h $DB_HOST -p $DB_PORT -U postgres -t -c "SELECT 1 FROM pg_roles WHERE rolname='$DB_USER'" | grep -q 1; then
-        psql -h $DB_HOST -p $DB_PORT -U postgres -c "DROP USER $DB_USER;"
-        print_success "Test user removed"
-    fi
+    print_success "Test data cleaned up"
 }
 
 # Function to generate test report
@@ -280,7 +275,7 @@ generate_test_report() {
 ## Test Environment
 - Database: PostgreSQL
 - Node.js: $(node --version)
-- npm: $(npm --version)
+- pnpm: $(pnpm --version)
 - Test Date: $(date)
 
 ## Test Results
@@ -318,11 +313,8 @@ main() {
     # Check dependencies
     check_dependencies
     
-    # Setup test environment
-    setup_test_env
-    
-    # Install dependencies
-    install_dependencies
+    # Setup test environment and install dependencies
+    setup_environment
     
     # Setup test database
     setup_test_database
@@ -358,9 +350,11 @@ main() {
     echo "  Integration Tests: $INTEGRATION_TEST_RESULT"
     echo "  Manual API Tests: $MANUAL_TEST_RESULT"
     
-    # Cleanup (optional)
-    if [ "$1" = "--cleanup" ]; then
+    # Cleanup test database after tests (unless --keep-db is specified)
+    if [ "$1" != "--keep-db" ]; then
         cleanup_test_data
+    else
+        print_warning "Test database '$DB_NAME' kept for debugging"
     fi
     
     # Exit with appropriate code
@@ -376,9 +370,9 @@ main() {
 # Handle script arguments
 case "$1" in
     --help|-h)
-        echo "Usage: $0 [--cleanup] [--help]"
+        echo "Usage: $0 [--keep-db] [--help]"
         echo "Options:"
-        echo "  --cleanup  Clean up test database after tests"
+        echo "  --keep-db  Keep test database after tests (for debugging)"
         echo "  --help     Show this help message"
         exit 0
         ;;

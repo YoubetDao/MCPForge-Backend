@@ -9,7 +9,7 @@ process.env.NODE_ENV = 'test';
 
 // Set default test database URL if not provided
 if (!process.env.DATABASE_URL) {
-  process.env.DATABASE_URL = 'postgresql://mcpforge_test:test_password@localhost:5432/mcpforge_test';
+  process.env.DATABASE_URL = 'postgresql://postgres:postgres@localhost:5433/mcpforge';
 }
 
 // Set default GitHub OAuth configuration for tests

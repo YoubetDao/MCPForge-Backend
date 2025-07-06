@@ -10,7 +10,7 @@
 
 - Node.js 18+ 
 - PostgreSQL 12+
-- npm 或 yarn
+- pnpm (推荐) 或 npm
 - curl (用于 API 测试)
 
 ### 2. GitHub OAuth 应用设置
@@ -41,14 +41,51 @@ FRONTEND_URL=http://localhost:3000
 # Test Database Configuration
 DATABASE_TYPE=postgres
 DATABASE_HOST=localhost
-DATABASE_PORT=5432
-DATABASE_USERNAME=mcpforge_test
-DATABASE_PASSWORD=test_password
+DATABASE_PORT=5433
+DATABASE_USERNAME=postgres
+DATABASE_PASSWORD=postgres
 DATABASE_NAME=mcpforge_test
 
 # Application Configuration
 PORT=8443
 NODE_ENV=test
+```
+
+## 数据库管理
+
+### 自动化数据库管理
+
+测试系统采用自动化的数据库管理策略：
+
+1. **测试开始时**：
+   - 自动删除已存在的 `mcpforge_test` 数据库
+   - 创建全新的测试数据库
+   - 运行数据库迁移
+
+2. **测试结束后**：
+   - 默认自动删除测试数据库
+   - 使用 `--keep-db` 参数可以保留数据库用于调试
+
+3. **数据库配置**：
+   - 数据库名称：`mcpforge_test`
+   - 端口：5433
+   - 用户：postgres
+   - 密码：postgres
+
+### 手动数据库管理
+
+```bash
+# 手动创建测试数据库
+createdb -h localhost -p 5433 -U postgres mcpforge_test
+
+# 手动删除测试数据库
+dropdb -h localhost -p 5433 -U postgres mcpforge_test
+
+# 连接测试数据库
+psql -h localhost -p 5433 -U postgres -d mcpforge_test
+
+# 查看数据库列表
+psql -h localhost -p 5433 -U postgres -l
 ```
 
 ## 测试架构
@@ -90,8 +127,8 @@ chmod +x scripts/test-github-auth.sh
 # 运行完整测试套件
 ./scripts/test-github-auth.sh
 
-# 运行测试并清理数据库
-./scripts/test-github-auth.sh --cleanup
+# 运行测试并保留数据库用于调试
+./scripts/test-github-auth.sh --keep-db
 
 # 查看帮助
 ./scripts/test-github-auth.sh --help
@@ -102,43 +139,44 @@ chmod +x scripts/test-github-auth.sh
 #### 1. 准备环境
 
 ```bash
+# 安装 pnpm (如果还没有)
+npm install -g pnpm
+
 # 安装依赖
-npm install
+pnpm install
 
 # 启动 PostgreSQL
 brew services start postgresql  # macOS
 # 或
 sudo systemctl start postgresql  # Linux
 
-# 创建测试数据库
-createdb -U postgres mcpforge_test
-psql -U postgres -c "CREATE USER mcpforge_test WITH PASSWORD 'test_password';"
-psql -U postgres -c "GRANT ALL PRIVILEGES ON DATABASE mcpforge_test TO mcpforge_test;"
+# 确保数据库存在 (通常已经存在)
+createdb -U postgres mcpforge_test 2>/dev/null || echo "Database already exists"
 ```
 
 #### 2. 运行数据库迁移
 
 ```bash
-export DATABASE_URL="postgresql://mcpforge_test:test_password@localhost:5432/mcpforge_test"
-npm run migration:run
+export DATABASE_URL="postgresql://postgres:postgres@localhost:5433/mcpforge_test"
+pnpm run migration:run
 ```
 
 #### 3. 运行单元测试
 
 ```bash
-npm test -- --testPathPattern="src/.*\.spec\.ts$"
+pnpm test -- --testPathPattern="src/.*\.spec\.ts$"
 ```
 
 #### 4. 运行集成测试
 
 ```bash
-npm run test:e2e
+pnpm run test:e2e
 ```
 
 #### 5. 运行覆盖率测试
 
 ```bash
-npm run test:cov
+pnpm run test:cov
 ```
 
 ## 测试覆盖范围
@@ -213,10 +251,12 @@ npm run test:cov
 
 2. **测试数据库权限问题**
    ```bash
-   # 重新创建测试用户
-   psql -U postgres -c "DROP USER IF EXISTS mcpforge_test;"
-   psql -U postgres -c "CREATE USER mcpforge_test WITH PASSWORD 'test_password';"
-   psql -U postgres -c "GRANT ALL PRIVILEGES ON DATABASE mcpforge_test TO mcpforge_test;"
+   # 检查数据库连接
+   psql -h localhost -p 5433 -U postgres -c "SELECT 1;"
+   
+   # 重新创建测试数据库
+   dropdb -U postgres mcpforge_test 2>/dev/null || true
+   createdb -U postgres mcpforge_test
    ```
 
 3. **GitHub OAuth 配置错误**
@@ -241,11 +281,11 @@ npm run test:cov
 
 3. **保留测试数据库**
    ```bash
-   # 不使用 --cleanup 标志，保留数据库用于调试
-   ./scripts/test-github-auth.sh
+   # 使用 --keep-db 标志，保留数据库用于调试
+   ./scripts/test-github-auth.sh --keep-db
    
    # 手动连接数据库查看数据
-   psql -U mcpforge_test -d mcpforge_test -h localhost
+   psql -U postgres -d mcpforge_test -h localhost -p 5433
    ```
 
 ## 持续集成
@@ -288,7 +328,7 @@ jobs:
       run: |
         echo "GITHUB_CLIENT_ID=${{ secrets.GITHUB_CLIENT_ID }}" > test.env
         echo "GITHUB_CLIENT_SECRET=${{ secrets.GITHUB_CLIENT_SECRET }}" >> test.env
-        echo "DATABASE_URL=postgresql://postgres:postgres@localhost:5432/mcpforge_test" >> test.env
+        echo "DATABASE_URL=postgresql://postgres:postgres@localhost:5433/mcpforge_test" >> test.env
       working-directory: ./backend
     
     - name: Run tests
