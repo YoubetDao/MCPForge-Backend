@@ -4,15 +4,19 @@ import {
   PrimaryGeneratedColumn,
   CreateDateColumn,
   UpdateDateColumn,
+  OneToMany,
 } from 'typeorm';
+import { AuthMethod } from './auth-method.entity';
 
-@Entity()
+export enum UserRole {
+  USER = 'user',
+  DEVELOPER = 'developer',
+}
+
+@Entity('users')
 export class User {
   @PrimaryGeneratedColumn()
-  id: number;
-
-  @Column({ unique: true })
-  github_id: string;
+  user_id: number;
 
   @Column()
   username: string;
@@ -20,14 +24,18 @@ export class User {
   @Column({ nullable: true })
   email: string;
 
-  @Column({ nullable: true })
-  avatar_url: string;
+  @Column({
+    type: 'enum',
+    enum: UserRole,
+    default: UserRole.USER
+  })
+  role: UserRole;
 
   @Column({ nullable: true })
-  github_url: string;
+  reward_address: string;
 
-  @Column({ type: 'json', nullable: true })
-  github_data: Record<string, any>;
+  @OneToMany(() => AuthMethod, authMethod => authMethod.user)
+  auth_methods: AuthMethod[];
 
   @CreateDateColumn()
   created_at: Date;

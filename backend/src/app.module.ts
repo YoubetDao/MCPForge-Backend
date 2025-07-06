@@ -5,6 +5,7 @@ import { TypeOrmModule } from "@nestjs/typeorm";
 import { ConfigModule, ConfigService } from "@nestjs/config";
 import { McpserverModule } from "./mcpserver/mcpserver.module";
 import { McpCardModule } from "./mcpcard/mcpcardmodule";
+import { UserModule } from "./user/user.module";
 
 @Module({
   imports: [
@@ -27,6 +28,7 @@ import { McpCardModule } from "./mcpcard/mcpcardmodule";
     }),
     McpserverModule,
     McpCardModule,
+    UserModule,
   ],
   controllers: [AppController],
   providers: [AppService],
