@@ -1,27 +1,26 @@
-import { IsNotEmpty, IsString, IsOptional, IsObject } from 'class-validator';
+import { IsString, IsEmail, IsOptional, IsEnum } from 'class-validator';
+import { UserRole } from '../entities/user.entity';
+import { AuthType } from '../entities/auth-method.entity';
 
 export class CreateUserDto {
-  @IsNotEmpty()
-  @IsString()
-  github_id: string;
-
-  @IsNotEmpty()
   @IsString()
   username: string;
 
+  @IsEmail()
   @IsOptional()
-  @IsString()
   email?: string;
 
+  @IsEnum(UserRole)
   @IsOptional()
-  @IsString()
-  avatar_url?: string;
+  role?: UserRole;
 
-  @IsOptional()
   @IsString()
-  github_url?: string;
-
   @IsOptional()
-  @IsObject()
-  github_data?: Record<string, any>;
+  reward_address?: string;
+
+  @IsEnum(AuthType)
+  auth_type: AuthType;
+
+  @IsString()
+  auth_identifier: string;
 }

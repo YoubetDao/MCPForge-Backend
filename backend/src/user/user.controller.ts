@@ -1,50 +1,109 @@
 import {
   Controller,
   Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
   Query,
+  ParseIntPipe,
   Res,
   HttpException,
   HttpStatus,
 } from '@nestjs/common';
 import { UserService } from './user.service';
+import { CreateUserDto } from './dto/create-user.dto';
+import { BindAuthMethodDto } from './dto/bind-auth-method.dto';
+import { GitHubAuthDto } from './dto/github-auth.dto';
+import { AuthType } from './entities/auth-method.entity';
 import { Response } from 'express';
-import { ConfigService } from '@nestjs/config';
 
 @Controller('user')
 export class UserController {
-  constructor(
-    private readonly userService: UserService,
-    private readonly configService: ConfigService,
-  ) {}
+  constructor(private readonly userService: UserService) {}
 
-  // @Get('github/login')
-  // githubLogin(@Res() res: Response) {
-  //   const clientId = this.configService.get('GITHUB_CLIENT_ID');
-  //   const redirectUri = this.configService.get('GITHUB_CALLBACK_URL');
+  @Post()
+  create(@Body() createUserDto: CreateUserDto) {
+    return this.userService.create(createUserDto);
+  }
 
-  //   const githubAuthUrl = `https://github.com/login/oauth/authorize?client_id=${clientId}&redirect_uri=${redirectUri}&scope=user:email`;
+  @Get()
+  findAll() {
+    return this.userService.findAll();
+  }
 
-  //   res.redirect(githubAuthUrl);
-  // }
+  @Get('by-auth')
+  findByAuthMethod(
+    @Query('auth_type') authType: AuthType,
+    @Query('auth_identifier') authIdentifier: string,
+  ) {
+    return this.userService.findByAuthMethod(authType, authIdentifier);
+  }
 
-  // @Get('github/callback')
-  // async githubCallback(@Query('code') code: string, @Res() res: Response) {
-  //   try {
-  //     if (!code) {
-  //       throw new HttpException('No code provided', HttpStatus.BAD_REQUEST);
-  //     }
+  @Get(':id')
+  findOne(@Param('id', ParseIntPipe) id: number) {
+    return this.userService.findOne(id);
+  }
 
-  //     const user = await this.userService.handleGithubCallback(code);
+  @Post(':id/bind-auth')
+  bindAuthMethod(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() bindAuthMethodDto: BindAuthMethodDto,
+  ) {
+    return this.userService.bindAuthMethod(id, bindAuthMethodDto);
+  }
 
-  //     // 这里可以生成 JWT token 或其他认证方式
-  //     // 然后将用户重定向到前端，带上认证信息
-  //     const frontendUrl = this.configService.get('FRONTEND_URL');
-  //     res.redirect(`${frontendUrl}/auth/callback?token=${user.id}`);
-  //   } catch (error) {
-  //     throw new HttpException(
-  //       `GitHub authentication failed: ${error.message}`,
-  //       HttpStatus.UNAUTHORIZED,
-  //     );
-  //   }
-  // }
+  @Delete(':id')
+  remove(@Param('id', ParseIntPipe) id: number) {
+    return this.userService.remove(id);
+  }
+
+  // GitHub OAuth endpoints
+  @Get('auth/github')
+  githubAuth(@Query('redirect_uri') redirectUri: string, @Res() res: Response) {
+    const authUrl = this.userService.getGitHubAuthUrl(redirectUri);
+    res.redirect(authUrl);
+  }
+
+  @Get('auth/github/callback')
+  async githubCallback(@Query() gitHubAuthDto: GitHubAuthDto, @Res() res: Response) {
+    try {
+      if (!gitHubAuthDto.code) {
+        throw new HttpException('No authorization code provided', HttpStatus.BAD_REQUEST);
+      }
+
+      const user = await this.userService.handleGitHubCallback(gitHubAuthDto);
+      
+      // In a real application, you would generate a JWT token here
+      const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+      
+      // Redirect to frontend with user info or token
+      res.redirect(`${frontendUrl}/auth/callback?user_id=${user.user_id}&success=true`);
+    } catch (error) {
+      const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+      res.redirect(`${frontendUrl}/auth/callback?error=${encodeURIComponent(error.message)}`);
+    }
+  }
+
+  @Post('auth/github/callback')
+  async githubCallbackPost(@Body() gitHubAuthDto: GitHubAuthDto) {
+    if (!gitHubAuthDto.code) {
+      throw new HttpException('No authorization code provided', HttpStatus.BAD_REQUEST);
+    }
+
+    try {
+      const user = await this.userService.handleGitHubCallback(gitHubAuthDto);
+      return {
+        success: true,
+        user,
+        message: 'GitHub authentication successful',
+      };
+    } catch (error) {
+      throw new HttpException(
+        `GitHub authentication failed: ${error.message}`,
+        HttpStatus.UNAUTHORIZED,
+      );
+    }
+  }
 }
