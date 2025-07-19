@@ -21,6 +21,15 @@ import { GitHubAuthDto } from './dto/github-auth.dto';
 import { FindByAuthDto } from './dto/find-by-auth.dto';
 import { AuthType } from './entities/auth-method.entity';
 import { Response } from 'express';
+import { Web3ChallengeDto } from './dto/web3-challenge.dto';
+import { Web3AuthDto } from './dto/web3-auth.dto';
+
+// 删除这个interface定义
+// interface Web3AuthDto {
+//   address: string;
+//   signature: string;
+//   nonce: string;
+// }
 
 @Controller('user')
 export class UserController {
@@ -160,6 +169,39 @@ export class UserController {
       throw new HttpException(
         errorMessage,
         HttpStatus.UNAUTHORIZED,
+      );
+    }
+  }
+
+  // Web3 认证端点
+  @Get('auth/web3/challenge')
+  @UsePipes(new ValidationPipe({ transform: true, whitelist: true }))
+  async getWeb3Challenge(@Query() web3ChallengeDto: Web3ChallengeDto) {
+    try {
+      return await this.userService.generateWeb3Challenge(web3ChallengeDto.address);
+    } catch (error) {
+      throw new HttpException(
+        'Failed to generate Web3 challenge',
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
+  }
+
+  @Post('auth/web3/verify')
+  @UsePipes(new ValidationPipe({ transform: true, whitelist: true }))
+  async verifyWeb3Auth(@Body() web3AuthDto: Web3AuthDto) {
+    try {
+      const user = await this.userService.verifyWeb3Auth(web3AuthDto);
+      return {
+        success: true,
+        user,
+        message: 'Web3 authentication successful',
+      };
+    } catch (error) {
+      const errorMessage = error instanceof HttpException ? error.message : 'Web3 authentication failed';
+      throw new HttpException(
+        errorMessage,
+        error instanceof HttpException ? error.getStatus() : HttpStatus.UNAUTHORIZED,
       );
     }
   }

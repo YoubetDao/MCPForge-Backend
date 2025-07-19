@@ -324,9 +324,151 @@ DELETE /user/{id}
 
 ---
 
+## Web3 钱包认证
+
+### 7. 获取 Web3 登录挑战
+
+获取用于 Web3 钱包签名的随机挑战（nonce）。
+
+```http
+GET user/auth/web3/challenge
+```
+
+**请求参数：**
+
+```json
+?address=0x742d35Cc6634C0532925a3b8D42B6d6e6
+```
+
+**字段说明：**
+
+| 字段 | 类型 | 必填 | 描述 |
+|------|------|------|------|
+| address | string | ✅ | Web3 钱包地址 |
+
+**响应：**
+
+```json
+{
+    "nonce": "Login to MCPForge at 2025-07-19T16:43:57.655Z with nonce: 9whi3gdvwy",
+    "expires_at": "2025-07-19T16:48:57.655Z"
+}
+```
+
+**字段说明：**
+
+| 字段 | 类型 | 描述 |
+|------|------|------|
+| nonce | string | 需要签名的消息 |
+| expires_at | string | 挑战过期时间 (ISO 8601) |
+
+**错误响应：**
+
+- `400 Bad Request` - 钱包地址格式无效
+
+---
+
+### 8. 验证 Web3 签名并登录/注册
+
+验证 Web3 钱包签名，如果用户不存在则自动注册。
+
+```http
+POST /user/auth/web3/verify
+```
+
+**请求体：**
+
+```json
+{
+  "address": "0x742d35Cc6634C0532925a3b8D42B6d6e6",
+  "signature": "0x1234567890abcdef...",
+  "nonce": "Please sign this message to authenticate: 1234567890",
+  "username": "crypto_user",
+  "email": "user@example.com",
+  "role": "user",
+  "reward_address": "0x742d35Cc6634C0532925a3b8D42B6d6e6"
+}
+```
+
+**字段说明：**
+
+| 字段 | 类型 | 必填 | 描述 |
+|------|------|------|------|
+| address | string | ✅ | Web3 钱包地址 |
+| signature | string | ✅ | 钱包签名 |
+| nonce | string | ✅ | 之前获取的挑战消息 |
+| username | string | ❌ | 用户名（新用户注册时需要） |
+| email | string | ❌ | 邮箱地址 |
+| role | enum | ❌ | 用户角色，默认 'user' |
+| reward_address | string | ❌ | 奖励地址（开发者用户） |
+
+**响应（登录成功）：**
+
+```json
+{
+  "success": true,
+  "action": "login",
+  "user": {
+    "user_id": 1,
+    "username": "existing_user",
+    "email": "user@example.com",
+    "role": "user",
+    "reward_address": "0x742d35Cc6634C0532925a3b8D42B6d6e6",
+    "auth_methods": [
+      {
+        "auth_id": 1,
+        "user_id": 1,
+        "auth_type": "web3",
+        "auth_identifier": "0x742d35Cc6634C0532925a3b8D42B6d6e6",
+        "created_at": "2024-01-01T00:00:00.000Z"
+      }
+    ],
+    "created_at": "2024-01-01T00:00:00.000Z",
+    "updated_at": "2024-01-01T00:00:00.000Z"
+  },
+  "message": "Web3 authentication successful"
+}
+```
+
+**响应（注册成功）：**
+
+```json
+{
+  "success": true,
+  "action": "register",
+  "user": {
+    "user_id": 2,
+    "username": "crypto_user",
+    "email": "user@example.com",
+    "role": "user",
+    "reward_address": "0x742d35Cc6634C0532925a3b8D42B6d6e6",
+    "auth_methods": [
+      {
+        "auth_id": 2,
+        "user_id": 2,
+        "auth_type": "web3",
+        "auth_identifier": "0x742d35Cc6634C0532925a3b8D42B6d6e6",
+        "created_at": "2024-01-01T00:00:00.000Z"
+      }
+    ],
+    "created_at": "2024-01-01T00:00:00.000Z",
+    "updated_at": "2024-01-01T00:00:00.000Z"
+  },
+  "message": "User registered and authenticated successfully"
+}
+```
+
+**错误响应：**
+
+- `400 Bad Request` - 签名验证失败或参数无效
+- `401 Unauthorized` - 挑战已过期或无效
+- `409 Conflict` - 用户名已存在（注册时）
+
+---
+
 ## GitHub OAuth 认证
 
-### 7. GitHub 登录授权
+### 9. GitHub 登录授权
 
 重定向用户到 GitHub 授权页面。
 
@@ -352,7 +494,7 @@ GET /user/auth/github?redirect_uri=http://localhost:3000/auth/callback
 
 ---
 
-### 8. GitHub 回调处理（GET）
+### 10. GitHub 回调处理（GET）
 
 处理 GitHub OAuth 回调，适用于浏览器重定向场景。
 
@@ -665,4 +807,4 @@ DATABASE_NAME=mcpforge
 ---
 
 *文档版本：v1.1*  
-*最后更新：2024-01-01* 
+*最后更新：2024-01-01*
