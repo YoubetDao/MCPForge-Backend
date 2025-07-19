@@ -9,9 +9,25 @@ import { GitHubAuthDto } from './dto/github-auth.dto';
 import { ConfigService } from '@nestjs/config';
 import { HttpService } from '@nestjs/axios';
 import { firstValueFrom } from 'rxjs';
+import { ethers } from 'ethers';
+import { Web3ChallengeDto, Web3ChallengeResponseDto } from './dto/web3-challenge.dto';
+// 导入Web3认证相关的DTO接口
+interface Web3AuthDto {
+  address: string;
+  signature: string;
+  username?: string;
+  email?: string;
+  role?: string;
+  reward_address?: string;
+}
+import { BadRequestException, UnauthorizedException } from '@nestjs/common';
+import { UserRole } from './entities/user.entity';
 
 @Injectable()
 export class UserService {
+  // Nonce存储，生产环境建议使用Redis
+  private nonceStore = new Map<string, { nonce: string; expires: Date }>();
+
   constructor(
     @InjectRepository(User)
     private userRepository: Repository<User>,
@@ -205,5 +221,77 @@ export class UserService {
     const callbackUrl = redirectUri || this.configService.get('GITHUB_CALLBACK_URL');
     
     return `https://github.com/login/oauth/authorize?client_id=${clientId}&redirect_uri=${callbackUrl}&scope=user:email`;
+  }
+
+  // Web3 认证方法
+  async generateWeb3Challenge(address: string): Promise<Web3ChallengeResponseDto> {
+    const normalizedAddress = address.toLowerCase();
+    const timestamp = new Date().toISOString();
+    const randomId = Math.random().toString(36).substring(2, 15);
+    const nonce = `Login to MCPForge at ${timestamp} with nonce: ${randomId}`;
+    const expires = new Date(Date.now() + 5 * 60 * 1000); // 5分钟过期
+    
+    this.nonceStore.set(normalizedAddress, { nonce, expires });
+    
+    return {
+      nonce,
+      expires_at: expires.toISOString()
+    };
+  }
+
+  async verifyWeb3Auth(web3AuthDto: Web3AuthDto): Promise<User> {
+    const address = web3AuthDto.address.toLowerCase();
+    
+    // 1. 验证nonce
+    const storedChallenge = this.nonceStore.get(address);
+    if (!storedChallenge || storedChallenge.expires < new Date()) {
+      throw new UnauthorizedException('Invalid or expired nonce');
+    }
+    
+    // 2. 验证签名
+    const isValidSignature = this.verifySignature(
+      storedChallenge.nonce,
+      web3AuthDto.signature,
+      web3AuthDto.address
+    );
+    
+    if (!isValidSignature) {
+      throw new UnauthorizedException('Invalid signature');
+    }
+    
+    // 3. 清除使用过的nonce
+    this.nonceStore.delete(address);
+    
+    // 4. 查找或创建用户
+    let user = await this.findByAuthMethod(AuthType.WEB3, web3AuthDto.address);
+    
+    if (!user) {
+      // 新用户注册
+      if (!web3AuthDto.username) {
+        throw new BadRequestException('Username is required for new users');
+      }
+      
+      const createUserDto: CreateUserDto = {
+        username: web3AuthDto.username,
+        email: web3AuthDto.email,
+        role: (web3AuthDto.role as UserRole) || UserRole.USER,
+        reward_address: web3AuthDto.reward_address,
+        auth_type: AuthType.WEB3,
+        auth_identifier: web3AuthDto.address,
+      };
+      
+      user = await this.create(createUserDto);
+    }
+    
+    return this.findOne(user.user_id);
+  }
+
+  private verifySignature(message: string, signature: string, address: string): boolean {
+    try {
+      const recoveredAddress = ethers.verifyMessage(message, signature);
+      return recoveredAddress.toLowerCase() === address.toLowerCase();
+    } catch (error) {
+      return false;
+    }
   }
 }
