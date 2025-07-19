@@ -331,15 +331,13 @@ DELETE /user/{id}
 获取用于 Web3 钱包签名的随机挑战（nonce）。
 
 ```http
-POST /user/web3/challenge
+GET user/auth/web3/challenge
 ```
 
-**请求体：**
+**请求参数：**
 
 ```json
-{
-  "address": "0x742d35Cc6634C0532925a3b8D42B6d6e6"
-}
+?address=0x742d35Cc6634C0532925a3b8D42B6d6e6
 ```
 
 **字段说明：**
@@ -352,8 +350,8 @@ POST /user/web3/challenge
 
 ```json
 {
-  "nonce": "Please sign this message to authenticate: 1234567890",
-  "expires_at": "2024-01-01T01:00:00.000Z"
+    "nonce": "Login to MCPForge at 2025-07-19T16:43:57.655Z with nonce: 9whi3gdvwy",
+    "expires_at": "2025-07-19T16:48:57.655Z"
 }
 ```
 
@@ -375,7 +373,7 @@ POST /user/web3/challenge
 验证 Web3 钱包签名，如果用户不存在则自动注册。
 
 ```http
-POST /user/web3/auth
+POST /user/auth/web3/verify
 ```
 
 **请求体：**
