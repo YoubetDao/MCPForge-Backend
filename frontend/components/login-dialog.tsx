@@ -18,6 +18,28 @@ interface LoginDialogProps {
   onClose: () => void
 }
 
+// 简单的认证服务
+class AuthService {
+  // 发起 GitHub 登录
+  static loginWithGitHub(): void {
+    // 直接调用后端 GitHub OAuth 接口
+    const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8443'
+    const authUrl = `${backendUrl}/user/auth/github`
+    console.log('Redirecting to GitHub OAuth URL:', authUrl)
+    window.location.href = authUrl
+  }
+
+  // 处理钱包连接（暂时保持模拟）
+  static async connectWallet(): Promise<string> {
+    // 模拟连接延迟
+    await new Promise((resolve) => setTimeout(resolve, 1500))
+
+    // 模拟钱包地址
+    const mockAddress = "0x71C7656EC7ab88b098defB751B7401B5f6d8976F"
+    return mockAddress
+  }
+}
+
 export default function LoginDialog({ isOpen, onClose }: LoginDialogProps) {
   const router = useRouter()
   const [error, setError] = useState("")
@@ -26,34 +48,21 @@ export default function LoginDialog({ isOpen, onClose }: LoginDialogProps) {
   const [isWalletConnecting, setIsWalletConnecting] = useState(false)
   const [walletError, setWalletError] = useState("")
 
-  const handleOAuthSignIn = async (provider: string) => {
+  const handleGitHubLogin = async () => {
     try {
       setIsLoading(true)
       setError("")
-
-      // 模拟登录延迟
-      await new Promise((resolve) => setTimeout(resolve, 1000))
-
-      // 模拟用户数据
-      const mockUser = {
-        id: "github-123456",
-        name: "Mock GitHub User",
-        email: "mock@github.com",
-        image: "https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png",
-      }
-
-      // 模拟登录成功 - 存储用户信息到 localStorage
-      localStorage.setItem("mockUser", JSON.stringify(mockUser))
-
-      // 关闭登录对话框
-      onClose()
-
-      // 更新会话状态而不刷新页面
-      window.dispatchEvent(new Event("mock-auth-change"))
+      
+      console.log('Initiating GitHub OAuth login...')
+      
+      // 调用真实的 GitHub OAuth 登录
+      AuthService.loginWithGitHub()
+      
+      // 注意：这里不需要关闭对话框，因为页面会跳转到 GitHub
+      // 登录成功后会通过 URL 参数回调处理
     } catch (err) {
-      console.error("Sign in error:", err)
-      setError("Failed to sign in. Please try again.")
-    } finally {
+      console.error("GitHub login error:", err)
+      setError("Failed to initiate GitHub login. Please try again.")
       setIsLoading(false)
     }
   }
@@ -63,32 +72,35 @@ export default function LoginDialog({ isOpen, onClose }: LoginDialogProps) {
       setIsWalletConnecting(true)
       setWalletError("")
 
-      // 模拟连接延迟
-      await new Promise((resolve) => setTimeout(resolve, 1500))
-
-      // 模拟钱包地址
-      const mockAddress = "0x71C7656EC7ab88b098defB751B7401B5f6d8976F"
-      setWalletAddress(mockAddress)
+      // 暂时保持模拟钱包连接
+      const address = await AuthService.connectWallet()
+      setWalletAddress(address)
 
       // 模拟签名过程
       await new Promise((resolve) => setTimeout(resolve, 800))
 
-      // 模拟用户数据
-      const mockUser = {
-        id: mockAddress,
-        name: `${mockAddress.substring(0, 6)}...${mockAddress.substring(mockAddress.length - 4)}`,
-        email: `${mockAddress.toLowerCase()}@ethereum.org`,
-        image: `/api/avatar?address=${mockAddress}`,
+      // 创建真实的用户数据结构
+      const userData = {
+        user_id: address,
+        username: `${address.substring(0, 6)}...${address.substring(address.length - 4)}`,
+        email: `${address.toLowerCase()}@ethereum.org`,
+        role: 'user',
+        auth_methods: [
+          {
+            auth_type: 'web3',
+            auth_identifier: address
+          }
+        ]
       }
 
-      // 模拟登录成功 - 存储用户信息到 localStorage
-      localStorage.setItem("mockUser", JSON.stringify(mockUser))
+      // 保存用户信息到 localStorage
+      localStorage.setItem("user", JSON.stringify(userData))
 
       // 关闭登录对话框
       onClose()
 
       // 更新会话状态而不刷新页面
-      window.dispatchEvent(new Event("mock-auth-change"))
+      window.dispatchEvent(new Event("auth-change"))
     } catch (err) {
       console.error("Wallet connection error:", err)
       setWalletError(err instanceof Error ? err.message : "Failed to connect wallet")
@@ -130,12 +142,15 @@ export default function LoginDialog({ isOpen, onClose }: LoginDialogProps) {
             <Button
               variant="outline"
               className="w-full max-w-xs bg-transparent border border-cyan-900/50 hover:border-cyan-500/70 hover:bg-cyan-900/10 text-gray-300 py-6"
-              onClick={() => handleOAuthSignIn("github")}
+              onClick={handleGitHubLogin}
               type="button"
               disabled={isLoading}
             >
               {isLoading ? (
-                "Connecting..."
+                <>
+                  <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                  <span className="text-base">Connecting to GitHub...</span>
+                </>
               ) : (
                 <>
                   <Github className="mr-2 h-5 w-5" />

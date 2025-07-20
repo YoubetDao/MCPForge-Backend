@@ -70,8 +70,8 @@ export default function Home() {
             >
               {dict.nav.submit}
             </Link>
-            {/* <AuthButton dict={dict.auth} /> */}
-            <ConnectButton 
+            <AuthButton dict={dict.auth} />
+            {/* <ConnectButton 
               className="bg-gradient-to-r from-cyan-500 to-pink-500 hover:from-cyan-400 hover:to-pink-400"
               style={{ 
                 border: 'none',
@@ -79,7 +79,7 @@ export default function Home() {
                 fontFamily: 'var(--font-share-tech-mono)',
                 fontSize: '14px'
               }}
-            />
+            /> */}
           </div>
         </div>
       </nav>

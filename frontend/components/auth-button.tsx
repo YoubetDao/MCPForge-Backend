@@ -13,7 +13,6 @@ import {
 import { Wallet } from "lucide-react"
 import LoginDialog from "@/components/login-dialog"
 import { useLanguage } from "@/lib/language-context"
-import { useSession, signOut } from "next-auth/react"
 
 interface AuthButtonProps {
   dict: {
@@ -25,46 +24,58 @@ interface AuthButtonProps {
 }
 
 export default function AuthButton({ dict }: AuthButtonProps) {
-  const { data: session, status } = useSession()
   const [isLoginDialogOpen, setIsLoginDialogOpen] = useState(false)
   const { locale } = useLanguage()
   const router = useRouter()
 
-  // 添加模拟用户状态
-  const [mockUser, setMockUser] = useState<any>(null)
+  // 用户状态管理
+  const [user, setUser] = useState<any>(null)
 
-  // 在组件挂载和模拟登录状态变化时检查localStorage
+  // 在组件挂载时检查localStorage和URL参数
   useEffect(() => {
-    const checkMockUser = () => {
+    const checkUser = () => {
       try {
-        const storedUser = localStorage.getItem("mockUser")
+        const storedUser = localStorage.getItem("user")
         if (storedUser) {
-          setMockUser(JSON.parse(storedUser))
+          setUser(JSON.parse(storedUser))
         }
       } catch (error) {
-        console.error("Error reading mock user:", error)
+        console.error("Error reading user data:", error)
       }
     }
 
-    // 初始检查
-    checkMockUser()
+    // 检查 URL 参数中的错误信息
+    const urlParams = new URLSearchParams(window.location.search)
+    const error = urlParams.get('error')
 
-    // 监听模拟登录状态变化
-    const handleAuthChange = () => {
-      checkMockUser()
+    if (error) {
+      // 处理登录错误
+      console.error('GitHub OAuth error:', error)
+      // 清除 URL 参数
+      window.history.replaceState({}, document.title, window.location.pathname)
+    } else {
+      // 正常加载，检查本地存储的用户信息
+      checkUser()
     }
 
-    window.addEventListener("mock-auth-change", handleAuthChange)
+    // 监听认证状态变化
+    const handleAuthChange = () => {
+      checkUser()
+    }
+
+    window.addEventListener("auth-change", handleAuthChange)
 
     return () => {
-      window.removeEventListener("mock-auth-change", handleAuthChange)
+      window.removeEventListener("auth-change", handleAuthChange)
     }
   }, [])
 
-  // 处理模拟登出
-  const handleMockSignOut = () => {
-    localStorage.removeItem("mockUser")
-    setMockUser(null)
+  // 处理登出
+  const handleLogout = () => {
+    localStorage.removeItem("user")
+    setUser(null)
+    // 触发自定义事件通知其他组件
+    window.dispatchEvent(new CustomEvent("auth-change"))
   }
 
   // 处理导航到个人资料页面
@@ -72,23 +83,14 @@ export default function AuthButton({ dict }: AuthButtonProps) {
     router.push("/profile")
   }
 
-  const isLoading = status === "loading" && !mockUser
-  const isLoggedIn = status === "authenticated" || mockUser
-
-  // 优先使用模拟用户，如果没有则使用session
-  const user = mockUser || session?.user
-
-  if (isLoading) {
-    return (
-      <Button variant="outline" size="sm" disabled className="w-24 border-cyan-900/50 text-gray-500">
-        <span className="loading-text">LOADING</span>
-      </Button>
-    )
+  // 处理导航到我的服务器页面
+  const handleNavigateToMyServers = () => {
+    router.push("/my-servers")
   }
 
-  if (isLoggedIn && user) {
-    const isWalletUser = user.id?.startsWith("0x")
-    const displayName = user.name || user.email || "User"
+  if (user) {
+    const isWalletUser = user.user_id?.toString().startsWith("0x") || user.auth_methods?.some((auth: any) => auth.auth_type === 'web3')
+    const displayName = user.username || user.email || "User"
 
     return (
       <DropdownMenu>
@@ -113,20 +115,28 @@ export default function AuthButton({ dict }: AuthButtonProps) {
         <DropdownMenuContent align="end" className="w-56 bg-black border border-cyan-900 text-gray-300">
           <div className="flex items-center justify-start p-2">
             <div className="flex flex-col space-y-1 leading-none">
-              {user.name && <p className="font-medium text-gray-100">{user.name}</p>}
+              {user.username && <p className="font-medium text-gray-100">{user.username}</p>}
               {user.email && <p className="w-[200px] truncate text-sm text-gray-400 font-mono">{user.email}</p>}
+              {user.role && <p className="text-xs text-cyan-400">{user.role}</p>}
             </div>
           </div>
-          <DropdownMenuSeparator className="bg-cyan-900/30" />
+          {/* <DropdownMenuSeparator className="bg-cyan-900/30" />
           <DropdownMenuItem
             onClick={handleNavigateToProfile}
             className="cursor-pointer hover:bg-cyan-900/20 hover:text-cyan-400 focus:bg-cyan-900/20 focus:text-cyan-400"
           >
             {dict.profile}
+          </DropdownMenuItem> */}
+          <DropdownMenuSeparator className="bg-cyan-900/30" />
+          <DropdownMenuItem
+            onClick={handleNavigateToMyServers}
+            className="cursor-pointer hover:bg-cyan-900/20 hover:text-cyan-400 focus:bg-cyan-900/20 focus:text-cyan-400"
+          >
+            My Servers
           </DropdownMenuItem>
           <DropdownMenuSeparator className="bg-cyan-900/30" />
           <DropdownMenuItem
-            onClick={mockUser ? handleMockSignOut : () => signOut({ callbackUrl: "/" })}
+            onClick={handleLogout}
             className="cursor-pointer text-pink-400 hover:bg-pink-900/20 focus:bg-pink-900/20"
           >
             {dict.signOut}
