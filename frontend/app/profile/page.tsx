@@ -1,7 +1,6 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { useSession } from "next-auth/react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -10,43 +9,40 @@ import { Loader2, Server, Plus, Edit, ExternalLink } from "lucide-react"
 import Link from "next/link"
 
 export default function ProfilePage() {
-  const { data: session, status } = useSession()
-  const [mockUser, setMockUser] = useState<any>(null)
+  const [user, setUser] = useState<any>(null)
   const [isLoading, setIsLoading] = useState(true)
 
-  // 在组件挂载时检查localStorage中的模拟用户
+  // 在组件挂载时检查localStorage中的用户信息
   useEffect(() => {
-    const checkMockUser = () => {
+    const checkUser = () => {
       try {
-        const storedUser = localStorage.getItem("mockUser")
+        const storedUser = localStorage.getItem("user")
         if (storedUser) {
-          setMockUser(JSON.parse(storedUser))
+          setUser(JSON.parse(storedUser))
         }
       } catch (error) {
-        console.error("Error reading mock user:", error)
+        console.error("Error reading user data:", error)
       } finally {
         setIsLoading(false)
       }
     }
 
     // 初始检查
-    checkMockUser()
+    checkUser()
 
-    // 监听模拟登录状态变化
+    // 监听认证状态变化
     const handleAuthChange = () => {
-      checkMockUser()
+      checkUser()
     }
 
-    window.addEventListener("mock-auth-change", handleAuthChange)
+    window.addEventListener("auth-change", handleAuthChange)
 
     return () => {
-      window.removeEventListener("mock-auth-change", handleAuthChange)
+      window.removeEventListener("auth-change", handleAuthChange)
     }
   }, [])
 
-  // 优先使用模拟用户，如果没有则使用session
-  const user = mockUser || session?.user
-  const isAuthenticated = status === "authenticated" || !!mockUser
+  const isAuthenticated = !!user
 
   // 如果正在加载，显示加载状态
   if (isLoading) {
@@ -75,7 +71,7 @@ export default function ProfilePage() {
 
   // 创建默认用户数据，当用户未登录时使用
   const defaultUser = {
-    name: "Guest User",
+    username: "Guest User",
     email: "Not signed in",
     image: "",
   }
@@ -104,17 +100,22 @@ export default function ProfilePage() {
 
               <CardHeader className="flex flex-col items-center">
                 <Avatar className="h-24 w-24 mb-4 border-2 border-cyan-500/50">
-                  <AvatarImage src={displayUser?.image || ""} alt={displayUser?.name || "User"} />
+                  <AvatarImage src={displayUser?.image || ""} alt={displayUser?.username || "User"} />
                   <AvatarFallback className="bg-gradient-to-br from-cyan-500 to-pink-500 text-black font-bold">
-                    {displayUser?.name ? getInitials(displayUser.name) : "U"}
+                    {displayUser?.username ? getInitials(displayUser.username) : "U"}
                   </AvatarFallback>
                 </Avatar>
                 <CardTitle className="text-xl font-cyberpunk text-gray-800 dark:text-gray-100">
-                  {displayUser?.name}
+                  {displayUser?.username}
                 </CardTitle>
                 <CardDescription className="text-gray-600 dark:text-gray-400 font-mono">
                   {displayUser?.email}
                 </CardDescription>
+                {user?.role && (
+                  <CardDescription className="text-cyan-600 dark:text-cyan-400 font-mono">
+                    Role: {user.role}
+                  </CardDescription>
+                )}
 
                 {!isAuthenticated && (
                   <div className="mt-4 w-full">
@@ -122,7 +123,7 @@ export default function ProfilePage() {
                       className="w-full bg-gradient-to-r from-cyan-500 to-pink-500 hover:from-cyan-400 hover:to-pink-400 text-black font-cyberpunk border-0"
                       asChild
                     >
-                      <Link href="/auth/signin?callbackUrl=/profile">Sign In to Access Your Profile</Link>
+                      <Link href="/">Sign In to Access Your Profile</Link>
                     </Button>
                   </div>
                 )}
@@ -145,7 +146,15 @@ export default function ProfilePage() {
                     <div className="text-sm text-gray-600 dark:text-gray-400 space-y-1 font-mono">
                       <p>Member since: May 2023</p>
                       <p>Status: Active</p>
-                      <p>Role: User</p>
+                      <p>Role: {user?.role || 'User'}</p>
+                      {user?.auth_methods && (
+                        <div>
+                          <p>Auth Methods:</p>
+                          {user.auth_methods.map((auth: any, index: number) => (
+                            <p key={index} className="ml-2">• {auth.auth_type}</p>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   </div>
                 </CardContent>
@@ -194,7 +203,7 @@ export default function ProfilePage() {
                       className="bg-gradient-to-r from-cyan-500 to-pink-500 hover:from-cyan-400 hover:to-pink-400 text-black font-cyberpunk border-0"
                       asChild
                     >
-                      <Link href="/auth/signin?callbackUrl=/profile">Sign In</Link>
+                      <Link href="/">Sign In</Link>
                     </Button>
                   </div>
                 ) : mockServers.length > 0 ? (
@@ -251,15 +260,15 @@ export default function ProfilePage() {
                   RECENT ACTIVITY
                 </CardTitle>
                 <CardDescription className="text-gray-600 dark:text-gray-400">
-                  Your recent interactions on MCP forge
+                  Your recent actions and contributions
                 </CardDescription>
               </CardHeader>
 
               <CardContent>
                 <div className="text-center py-8">
                   <p className="text-gray-600 dark:text-gray-400">No recent activity to display.</p>
-                  <p className="text-gray-600 dark:text-gray-400 mt-2">
-                    Start exploring MCP servers to see your activity here.
+                  <p className="text-gray-600 dark:text-gray-400 text-sm mt-2">
+                    Start contributing to see your activity here.
                   </p>
                 </div>
               </CardContent>

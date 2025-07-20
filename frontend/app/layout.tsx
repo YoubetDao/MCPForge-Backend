@@ -8,7 +8,6 @@ import { i18n } from "@/lib/i18n-config"
 import type { Locale } from "@/lib/i18n-config"
 import { getDictionary } from "@/lib/dictionary"
 import { LanguageProvider } from "@/lib/language-context"
-import { NextAuthProvider } from "@/components/next-auth-provider"
 import SuiProviders from "@/components/SuiProviders"
 
 const inter = Inter({ subsets: ["latin"] })
@@ -38,13 +37,11 @@ export default async function RootLayout({
   return (
     <html lang={defaultLocale}>
       <body className={`${inter.className} ${shareTechMono.variable}`}>
-        <NextAuthProvider>
-          <Providers>
-            <LanguageProvider initialLocale={defaultLocale} initialDictionary={dictionary}>
-              <SuiProviders>{children}</SuiProviders>
-            </LanguageProvider>
-          </Providers>
-        </NextAuthProvider>
+        <Providers>
+          <LanguageProvider initialLocale={defaultLocale} initialDictionary={dictionary}>
+            <SuiProviders>{children}</SuiProviders>
+          </LanguageProvider>
+        </Providers>
       </body>
     </html>
   )
