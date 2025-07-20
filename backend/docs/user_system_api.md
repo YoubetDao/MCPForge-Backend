@@ -300,7 +300,98 @@ POST /user/{id}/bind-auth
 
 ---
 
-### 6. 删除用户
+### 6. 更新用户信息
+
+更新指定用户的基本信息（不包括账户元数据）。
+
+```http
+PUT /user/{id}
+```
+
+**路径参数：**
+
+| 参数 | 类型 | 描述 |
+|------|------|------|
+| id | number | 用户ID |
+
+**请求体：**
+
+```json
+{
+  "username": "new_username",
+  "email": "new_email@example.com",
+  "role": "developer",
+  "reward_address": "0x9876543210fedcba"
+}
+```
+
+**字段说明：**
+
+| 字段 | 类型 | 必填 | 描述 |
+|------|------|------|------|
+| username | string | ❌ | 用户名（必须唯一） |
+| email | string | ❌ | 邮箱地址 |
+| role | enum | ❌ | 用户角色：`user`, `developer` |
+| reward_address | string | ❌ | 奖励地址（开发者用户） |
+
+**注意事项：**
+- 所有字段都是可选的，只更新提供的字段
+- 不能更新账户元数据（如 `user_id`、认证方式等）
+- `username` 如果提供，必须在系统中唯一
+- 请求体中的所有字段都会进行验证
+
+**响应：**
+
+```json
+{
+  "user_id": 1,
+  "username": "new_username",
+  "email": "new_email@example.com",
+  "role": "developer",
+  "reward_address": "0x9876543210fedcba",
+  "auth_methods": [
+    {
+      "auth_id": 1,
+      "user_id": 1,
+      "auth_type": "web3",
+      "auth_identifier": "0x1234567890abcdef",
+      "created_at": "2024-01-01T00:00:00.000Z"
+    }
+  ],
+  "created_at": "2024-01-01T00:00:00.000Z",
+  "updated_at": "2024-01-01T12:00:00.000Z"
+}
+```
+
+**错误响应：**
+
+- `404 Not Found` - 用户不存在
+- `400 Bad Request` - 请求参数无效
+- `409 Conflict` - 用户名已被其他用户使用
+
+**使用示例：**
+
+```bash
+# 更新用户名和角色
+curl -X PUT /user/1 \
+  -H "Content-Type: application/json" \
+  -d '{
+    "username": "developer_john",
+    "role": "developer",
+    "reward_address": "0x9876543210fedcba"
+  }'
+
+# 只更新邮箱地址
+curl -X PUT /user/1 \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "john.doe@newdomain.com"
+  }'
+```
+
+---
+
+### 7. 删除用户
 
 删除指定用户及其所有关联的认证方式。
 
