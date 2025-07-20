@@ -13,6 +13,7 @@ import {
   HttpStatus,
   ValidationPipe,
   UsePipes,
+  Put,
 } from '@nestjs/common';
 import { UserService } from './user.service';
 import { CreateUserDto } from './dto/create-user.dto';
@@ -23,6 +24,7 @@ import { AuthType } from './entities/auth-method.entity';
 import { Response } from 'express';
 import { Web3ChallengeDto } from './dto/web3-challenge.dto';
 import { Web3AuthDto } from './dto/web3-auth.dto';
+import { UpdateUserDto } from './dto/update-user.dto';
 
 // 删除这个interface定义
 // interface Web3AuthDto {
@@ -84,6 +86,24 @@ export class UserController {
       );
     }
   }
+
+  @Put(':id')
+  async updateUser(@Param('id', ParseIntPipe) id: number, @Body() updateUserDto: UpdateUserDto) {
+    try {
+      // 直接传递 id 和 updateUserDto，不需要设置 user_id
+      return await this.userService.updateUser(id, updateUserDto);
+    } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new HttpException(
+        'Internal server error',
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
+  }
+
+
 
   @Post(':id/bind-auth')
   async bindAuthMethod(
