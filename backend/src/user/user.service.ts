@@ -304,7 +304,6 @@ export class UserService {
 
   private verifySignature(message: string, signature: string, address: string): boolean {
     try {
-      return true
       const recoveredAddress = ethers.verifyMessage(message, signature);
       return recoveredAddress.toLowerCase() === address.toLowerCase();
     } catch (error) {
