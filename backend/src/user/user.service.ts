@@ -14,6 +14,7 @@ import { Web3ChallengeDto, Web3ChallengeResponseDto } from './dto/web3-challenge
 import { Web3AuthDto } from './dto/web3-auth.dto';
 import { BadRequestException, UnauthorizedException } from '@nestjs/common';
 import { UserRole } from './entities/user.entity';
+import { UpdateUserDto } from './dto/update-user.dto';
 
 @Injectable()
 export class UserService {
@@ -304,11 +305,55 @@ export class UserService {
 
   private verifySignature(message: string, signature: string, address: string): boolean {
     try {
-      return true
       const recoveredAddress = ethers.verifyMessage(message, signature);
       return recoveredAddress.toLowerCase() === address.toLowerCase();
     } catch (error) {
       return false;
     }
+  }
+
+  async updateUser(userId: number, updateUserDto: UpdateUserDto) {
+    // 检查用户是否存在
+    const user = await this.userRepository.findOne({
+      where: { user_id: userId },
+    });
+  
+    if (!user) {
+      throw new NotFoundException(`User with ID ${userId} not found`);
+    }
+  
+    // 只更新提供的字段
+    const fieldsToUpdate: Partial<User> = {};
+    
+    if (updateUserDto.username !== undefined) {
+      // 检查用户名是否已被其他用户使用
+      const existingUser = await this.userRepository.findOne({
+        where: { username: updateUserDto.username },
+      });
+      
+      if (existingUser && existingUser.user_id !== userId) {
+        throw new ConflictException('Username already exists');
+      }
+      
+      fieldsToUpdate.username = updateUserDto.username;
+    }
+    
+    if (updateUserDto.email !== undefined) {
+      fieldsToUpdate.email = updateUserDto.email;
+    }
+    
+    if (updateUserDto.role !== undefined) {
+      fieldsToUpdate.role = updateUserDto.role;
+    }
+    
+    if (updateUserDto.reward_address !== undefined) {
+      fieldsToUpdate.reward_address = updateUserDto.reward_address;
+    }
+  
+    // 执行更新
+    await this.userRepository.update(userId, fieldsToUpdate);
+  
+    // 返回更新后的用户信息
+    return this.findOne(userId);
   }
 }
