@@ -2,98 +2,97 @@
 @tailwind components;
 @tailwind utilities;
 
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+
 @layer base {
   :root {
-    /* 亮色模式变量 */
+    /* Binance Light Mode Colors */
     --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    --foreground: 0 0% 13.3%; /* #222222 */
     --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card-foreground: 0 0% 13.3%;
     --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
-    --primary: 196 100% 50%;
-    --primary-foreground: 210 40% 98%;
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 196 100% 50%;
-    --radius: 0.75rem;
+    --popover-foreground: 0 0% 13.3%;
+    --primary: 39 96% 55%; /* #F5A623 Binance Yellow */
+    --primary-foreground: 0 0% 0%; /* Black text on yellow */
+    --secondary: 0 0% 96.1%;
+    --secondary-foreground: 0 0% 13.3%;
+    --muted: 0 0% 96.1%;
+    --muted-foreground: 0 0% 45.1%;
+    --accent: 39 96% 55%; /* Binance Yellow */
+    --accent-foreground: 0 0% 0%;
+    --destructive: 4 90% 58%; /* #D32F2F Binance Red */
+    --destructive-foreground: 0 0% 98%;
+    --success: 145 100% 39%; /* #00C853 Binance Green */
+    --success-foreground: 0 0% 98%;
+    --border: 0 0% 89.8%;
+    --input: 0 0% 89.8%;
+    --ring: 39 96% 55%; /* Binance Yellow */
   }
 
   .dark {
-    /* 暗色模式变量 */
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
-    --primary: 196 100% 50%;
-    --primary-foreground: 210 40% 98%;
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 196 100% 50%;
+    /* Binance Dark Mode Colors */
+    --background: 0 0% 3.9%; /* Very dark background */
+    --foreground: 0 0% 98%;
+    --card: 0 0% 3.9%;
+    --card-foreground: 0 0% 98%;
+    --popover: 0 0% 3.9%;
+    --popover-foreground: 0 0% 98%;
+    --primary: 39 96% 55%; /* #F5A623 Binance Yellow */
+    --primary-foreground: 0 0% 0%;
+    --secondary: 0 0% 14.9%;
+    --secondary-foreground: 0 0% 98%;
+    --muted: 0 0% 14.9%;
+    --muted-foreground: 0 0% 63.9%;
+    --accent: 39 96% 55%; /* Binance Yellow */
+    --accent-foreground: 0 0% 0%;
+    --destructive: 4 90% 58%; /* #D32F2F Binance Red */
+    --destructive-foreground: 0 0% 98%;
+    --success: 145 100% 39%; /* #00C853 Binance Green */
+    --success-foreground: 0 0% 98%;
+    --border: 0 0% 14.9%;
+    --input: 0 0% 14.9%;
+    --ring: 39 96% 55%; /* Binance Yellow */
   }
 }
 
 @layer components {
-  .cyber-box {
-    @apply relative overflow-hidden;
+  /* Binance-style components */
+  .binance-card {
+    @apply bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg shadow-card hover:shadow-popup transition-all duration-200;
   }
 
-  .cyber-box::before {
-    @apply absolute top-0 left-0 w-full h-0.5 bg-gradient-to-r from-transparent via-cyan-500 to-transparent content-[''];
+  .binance-button-primary {
+    @apply bg-binance-yellow hover:bg-binance-yellow/90 text-black font-medium px-6 py-3 rounded-lg transition-all duration-200;
   }
 
-  .cyber-box::after {
-    @apply absolute bottom-0 left-0 w-full h-0.5 bg-gradient-to-r from-transparent via-pink-500 to-transparent content-[''];
+  .binance-button-secondary {
+    @apply bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-binance-black dark:text-white font-medium px-6 py-3 rounded-lg transition-all duration-200;
   }
 
-  .cyber-box-sm {
-    @apply relative overflow-hidden;
+  .binance-input {
+    @apply w-full px-4 py-3 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-binance-yellow focus:border-transparent transition-all duration-200;
   }
 
-  .cyber-underline {
-    @apply absolute bottom-0 left-0 w-0 h-0.5 bg-gradient-to-r from-cyan-400 to-pink-500 transition-all duration-300 group-hover:w-full;
+  .binance-badge-success {
+    @apply bg-binance-green/10 text-binance-green border border-binance-green/20 px-3 py-1 rounded-lg text-sm font-medium;
   }
 
-  .cyber-tab {
-    @apply relative overflow-hidden transition-all duration-300;
+  .binance-badge-error {
+    @apply bg-binance-red/10 text-binance-red border border-binance-red/20 px-3 py-1 rounded-lg text-sm font-medium;
   }
 
-  .cyber-tab-active {
-    @apply relative overflow-hidden;
-  }
-
-  .cyber-search-box {
-    @apply relative overflow-hidden;
+  .binance-badge-neutral {
+    @apply bg-gray-100 dark:bg-gray-800 text-binance-black dark:text-white border border-gray-200 dark:border-gray-700 px-3 py-1 rounded-lg text-sm font-medium;
   }
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-  background-color: #f9fafb; /* 默认亮色背景 */
-  color: #1f2937; /* 默认亮色文本 */
-}
-
-.dark body {
-  background-color: black;
-  color: #e5e5e5;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  background-color: hsl(var(--background));
+  color: hsl(var(--foreground));
+  font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+  font-variation-settings: normal;
 }
 
 @layer utilities {
@@ -106,8 +105,45 @@ body {
     display: none;
   }
 
-  .font-cyberpunk {
-    font-family: var(--font-share-tech-mono), monospace;
-    letter-spacing: 0.05em;
+  /* Binance typography utilities */
+  .font-inter {
+    font-family: 'Inter', sans-serif;
+  }
+
+  .text-binance-yellow {
+    color: #F5A623;
+  }
+
+  .text-binance-black {
+    color: #222222;
+  }
+
+  .text-binance-green {
+    color: #00C853;
+  }
+
+  .text-binance-red {
+    color: #D32F2F;
+  }
+
+  .bg-binance-yellow {
+    background-color: #F5A623;
+  }
+
+  .bg-binance-black {
+    background-color: #222222;
+  }
+
+  .bg-binance-green {
+    background-color: #00C853;
+  }
+
+  .bg-binance-red {
+    background-color: #D32F2F;
+  }
+
+  /* Smooth transitions for Binance style */
+  .transition-binance {
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   }
 }

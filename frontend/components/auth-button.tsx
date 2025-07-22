@@ -97,47 +97,47 @@ export default function AuthButton({ dict }: AuthButtonProps) {
         <DropdownMenuTrigger asChild>
           <Button
             variant="outline"
-            className="border border-cyan-900/50 hover:border-cyan-500/70 hover:bg-cyan-900/10 text-gray-300 group"
+            className="border border-binance-gray-3 hover:border-binance-yellow/70 hover:bg-binance-yellow/10 text-binance-black dark:text-binance-gray-1 group binance-button-secondary"
           >
-            <div className="w-8 h-8 rounded bg-gradient-to-br from-cyan-500 to-pink-500 flex items-center justify-center text-black mr-2 overflow-hidden relative">
+            <div className="w-8 h-8 rounded-md bg-binance-gray-5 flex items-center justify-center text-binance-yellow mr-2 overflow-hidden relative shadow-binance">
               {user.image ? (
                 <img src={user.image || "/placeholder.svg"} alt={displayName} className="w-full h-full object-cover" />
               ) : isWalletUser ? (
-                <Wallet className="h-4 w-4" />
+                <Wallet className="h-4 w-4 text-binance-yellow" />
               ) : (
                 displayName[0].toUpperCase()
               )}
-              <div className="absolute inset-0 bg-black opacity-0 group-hover:opacity-20 transition-opacity"></div>
+              <div className="absolute inset-0 bg-binance-yellow/10 opacity-0 group-hover:opacity-20 transition-opacity"></div>
             </div>
-            <span className="max-w-[100px] truncate hidden sm:block font-mono">{displayName}</span>
+            <span className="max-w-[100px] truncate hidden sm:block font-inter">{displayName}</span>
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-56 bg-black border border-cyan-900 text-gray-300">
+        <DropdownMenuContent align="end" className="w-56 bg-binance-gray-6 border border-binance-gray-4 text-binance-black dark:text-binance-gray-1 shadow-binance">
           <div className="flex items-center justify-start p-2">
             <div className="flex flex-col space-y-1 leading-none">
-              {user.username && <p className="font-medium text-gray-100">{user.username}</p>}
-              {user.email && <p className="w-[200px] truncate text-sm text-gray-400 font-mono">{user.email}</p>}
-              {user.role && <p className="text-xs text-cyan-400">{user.role}</p>}
+              {user.username && <p className="font-medium text-binance-black dark:text-binance-gray-1">{user.username}</p>}
+              {user.email && <p className="w-[200px] truncate text-sm text-binance-gray-3 font-inter">{user.email}</p>}
+              {user.role && <p className="text-xs text-binance-green">{user.role}</p>}
             </div>
           </div>
-          {/* <DropdownMenuSeparator className="bg-cyan-900/30" />
+          {/* <DropdownMenuSeparator className="bg-binance-gray-4" />
           <DropdownMenuItem
             onClick={handleNavigateToProfile}
-            className="cursor-pointer hover:bg-cyan-900/20 hover:text-cyan-400 focus:bg-cyan-900/20 focus:text-cyan-400"
+            className="cursor-pointer hover:bg-binance-gray-5 hover:text-binance-yellow focus:bg-binance-gray-5 focus:text-binance-yellow"
           >
             {dict.profile}
           </DropdownMenuItem> */}
-          <DropdownMenuSeparator className="bg-cyan-900/30" />
+          <DropdownMenuSeparator className="bg-binance-gray-4" />
           <DropdownMenuItem
             onClick={handleNavigateToMyServers}
-            className="cursor-pointer hover:bg-cyan-900/20 hover:text-cyan-400 focus:bg-cyan-900/20 focus:text-cyan-400"
+            className="cursor-pointer hover:bg-binance-gray-5 hover:text-binance-yellow focus:bg-binance-gray-5 focus:text-binance-yellow"
           >
             My Servers
           </DropdownMenuItem>
-          <DropdownMenuSeparator className="bg-cyan-900/30" />
+          <DropdownMenuSeparator className="bg-binance-gray-4" />
           <DropdownMenuItem
             onClick={handleLogout}
-            className="cursor-pointer text-pink-400 hover:bg-pink-900/20 focus:bg-pink-900/20"
+            className="cursor-pointer text-binance-red hover:bg-binance-gray-5 focus:bg-binance-gray-5"
           >
             {dict.signOut}
           </DropdownMenuItem>
@@ -149,7 +149,7 @@ export default function AuthButton({ dict }: AuthButtonProps) {
   return (
     <>
       <Button
-        className="bg-gradient-to-r from-cyan-500 to-pink-500 hover:from-cyan-400 hover:to-pink-400 text-black font-cyberpunk border-0"
+        className="binance-button-primary text-binance-black font-inter border-0"
         onClick={() => setIsLoginDialogOpen(true)}
       >
         SIGN IN
