@@ -273,7 +273,8 @@ export class UserService {
     if (!user) {
       // 新用户注册
       if (!web3AuthDto.username) {
-        throw new BadRequestException('Username is required for new users');
+        // throw new BadRequestException('Username is required for new users');
+        web3AuthDto.username = address;
       }
       
       const createUserDto: CreateUserDto = {
