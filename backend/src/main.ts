@@ -3,6 +3,7 @@ import { AppModule } from "./app.module";
 import { ValidationPipe } from "@nestjs/common";
 import * as fs from "fs";
 import { INestApplication } from "@nestjs/common";
+import { SwaggerModule, DocumentBuilder } from "@nestjs/swagger";
 
 async function bootstrap() {
   let app: INestApplication;
@@ -24,6 +25,15 @@ async function bootstrap() {
     app = await NestFactory.create(AppModule);
     console.log("Server running with HTTP");
   }
+
+  const config = new DocumentBuilder()
+    .setTitle("MCPForge API")
+    .setDescription("The API description for MCPForge backend")
+    .setVersion("1.0")
+    .build();
+
+  const document = SwaggerModule.createDocument(app, config);
+  SwaggerModule.setup("api-docs", app, document);
 
   app.enableCors();
   app.useGlobalPipes(new ValidationPipe());
