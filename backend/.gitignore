@@ -3,3 +3,6 @@ node_modules
 dist
 docker/data
 ssl/
+
+# Swagger generated file
+swagger.json
