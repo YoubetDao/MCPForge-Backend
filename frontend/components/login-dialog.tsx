@@ -6,6 +6,11 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { useRouter } from "next/navigation"
 import { useState } from "react"
 import { AlertCircle } from "lucide-react"
+import { ethers } from "ethers"
+import { UserService, OpenAPI } from "@/lib/api/index";
+import type { Web3AuthDto } from "@/lib/api/index";
+import { useEffect } from "react";
+import { useUser } from "@/lib/hooks/useUser"
 
 declare global {
   interface Window {
@@ -18,28 +23,6 @@ interface LoginDialogProps {
   onClose: () => void
 }
 
-// 简单的认证服务
-class AuthService {
-  // 发起 GitHub 登录
-  static loginWithGitHub(): void {
-    // 直接调用后端 GitHub OAuth 接口
-    const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8443'
-    const authUrl = `${backendUrl}/user/auth/github`
-    console.log('Redirecting to GitHub OAuth URL:', authUrl)
-    window.location.href = authUrl
-  }
-
-  // 处理钱包连接（暂时保持模拟）
-  static async connectWallet(): Promise<string> {
-    // 模拟连接延迟
-    await new Promise((resolve) => setTimeout(resolve, 1500))
-
-    // 模拟钱包地址
-    const mockAddress = "0x71C7656EC7ab88b098defB751B7401B5f6d8976F"
-    return mockAddress
-  }
-}
-
 export default function LoginDialog({ isOpen, onClose }: LoginDialogProps) {
   const router = useRouter()
   const [error, setError] = useState("")
@@ -47,19 +30,29 @@ export default function LoginDialog({ isOpen, onClose }: LoginDialogProps) {
   const [walletAddress, setWalletAddress] = useState<string | null>(null)
   const [isWalletConnecting, setIsWalletConnecting] = useState(false)
   const [walletError, setWalletError] = useState("")
+  const { setUser } = useUser()
+
+  // 设置 OpenAPI BASE 地址优先用 .env，否则用本地
+  useEffect(() => {
+    const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8443";
+    if (OpenAPI.BASE !== backendUrl) {
+      OpenAPI.BASE = backendUrl;
+    }
+  }, []);
 
   const handleGitHubLogin = async () => {
     try {
       setIsLoading(true)
       setError("")
-      
-      console.log('Initiating GitHub OAuth login...')
-      
-      // 调用真实的 GitHub OAuth 登录
-      AuthService.loginWithGitHub()
-      
-      // 注意：这里不需要关闭对话框，因为页面会跳转到 GitHub
-      // 登录成功后会通过 URL 参数回调处理
+      // 获取当前页面 URL 作为 redirect_uri
+      const redirectUri = OpenAPI.BASE + "/user/auth/github/callback"
+      // 获取后端返回的 GitHub OAuth 跳转链接
+      const result = await UserService.userControllerGithubAuth(redirectUri)
+      if (result && result.url) {
+        window.location.href = result.url
+      } else {
+        throw new Error("Failed to get GitHub OAuth URL")
+      }
     } catch (err) {
       console.error("GitHub login error:", err)
       setError("Failed to initiate GitHub login. Please try again.")
@@ -67,46 +60,65 @@ export default function LoginDialog({ isOpen, onClose }: LoginDialogProps) {
     }
   }
 
-  const handleWalletConnect = async () => {
+  const handleWalletLogin = async () => {
     try {
       setIsWalletConnecting(true)
       setWalletError("")
-
-      // 暂时保持模拟钱包连接
-      const address = await AuthService.connectWallet()
-      setWalletAddress(address)
-
-      // 模拟签名过程
-      await new Promise((resolve) => setTimeout(resolve, 800))
-
-      // 创建真实的用户数据结构
-      const userData = {
-        user_id: address,
-        username: `${address.substring(0, 6)}...${address.substring(address.length - 4)}`,
-        email: `${address.toLowerCase()}@ethereum.org`,
-        role: 'user',
-        auth_methods: [
-          {
-            auth_type: 'web3',
-            auth_identifier: address
-          }
-        ]
+      if (!window.ethereum) {
+        throw new Error('MetaMask is not installed. Please install MetaMask to continue.')
       }
+      const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' })
+      const address = accounts[0]
+      if (!address) {
+        throw new Error('No wallet address found')
+      }
+      setWalletAddress(address)
+      console.log('Wallet connected:', address)
 
-      // 保存用户信息到 localStorage
-      localStorage.setItem("user", JSON.stringify(userData))
+      // 获取 Web3 挑战
+      const challenge = await UserService.userControllerGetWeb3Challenge(address.toLowerCase())
+      if (new Date(challenge.expires_at) < new Date()) {
+        throw new Error('Challenge has expired. Please try again.')
+      }
+      // 请求用户签名
+      const signature = await window.ethereum.request({
+        method: 'personal_sign',
+        params: [challenge.nonce, address],
+      })
 
-      // 关闭登录对话框
-      onClose()
+      console.log('Signature received:', signature)
 
-      // 更新会话状态而不刷新页面
-      window.dispatchEvent(new Event("auth-change"))
+      // 检查用户是否已存在
+      try {
+        const payload: Web3AuthDto = {
+          address: address.toLowerCase(),
+          signature,
+          nonce: challenge.nonce,
+        };
+        console.log("Web3AuthDto payload:", payload);
+        const authResult = await UserService.userControllerVerifyWeb3Auth(payload);
+        setUser(authResult.user)
+        onClose()
+        window.dispatchEvent(new Event("auth-change"))
+      } catch (error: any) {
+        if (error.message.includes('User not found') || error.message.includes('Username is required')) {
+          setWalletError("Wallet authentication failed.")
+        } else {
+          throw error
+        }
+      }
     } catch (err) {
       console.error("Wallet connection error:", err)
       setWalletError(err instanceof Error ? err.message : "Failed to connect wallet")
     } finally {
       setIsWalletConnecting(false)
     }
+  }
+
+  const resetWalletState = () => {
+    setWalletAddress(null)
+    setWalletError("")
+    localStorage.removeItem('web3_auth_data')
   }
 
   return (
@@ -124,9 +136,11 @@ export default function LoginDialog({ isOpen, onClose }: LoginDialogProps) {
 
         <DialogHeader>
           <DialogTitle className="text-2xl font-bold text-center font-cyberpunk text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-pink-500">
-            ACCESS TERMINAL
+            Sign In
           </DialogTitle>
-          <DialogDescription className="text-center text-gray-400">使用 GitHub 账号登录 MCP forge</DialogDescription>
+          <DialogDescription className="text-center text-gray-400">
+            Sign in to your account
+          </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-6">
@@ -137,9 +151,8 @@ export default function LoginDialog({ isOpen, onClose }: LoginDialogProps) {
             </Alert>
           )}
 
-          {/* GitHub Login */}
           <div className="flex flex-col items-center justify-center py-4">
-            <Button
+            {/* <Button
               variant="outline"
               className="w-full max-w-xs bg-transparent border border-cyan-900/50 hover:border-cyan-500/70 hover:bg-cyan-900/10 text-gray-300 py-6"
               onClick={handleGitHubLogin}
@@ -157,21 +170,21 @@ export default function LoginDialog({ isOpen, onClose }: LoginDialogProps) {
                   <span className="text-base">Sign in with GitHub</span>
                 </>
               )}
-            </Button>
+            </Button> */}
 
-            <div className="relative my-6">
+            {/* <div className="relative my-6">
               <div className="absolute inset-0 flex items-center">
                 <div className="w-full border-t border-cyan-900/30"></div>
               </div>
               <div className="relative flex justify-center text-xs">
                 <span className="bg-black px-2 text-gray-500 font-mono">OR</span>
               </div>
-            </div>
+            </div> */}
 
             <Button
               variant="outline"
               className="w-full max-w-xs bg-transparent border border-cyan-900/50 hover:border-cyan-500/70 hover:bg-cyan-900/10 text-gray-300 py-6"
-              onClick={handleWalletConnect}
+              onClick={handleWalletLogin}
               type="button"
               disabled={isLoading || isWalletConnecting}
             >
