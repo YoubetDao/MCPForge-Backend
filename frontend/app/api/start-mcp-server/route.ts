@@ -5,7 +5,7 @@ export async function POST(request: Request) {
     const body = await request.json()
 
     // Forward the request to the external API
-    const response = await fetch("http://43.130.247.176:5190/mcpserver", {
+    const response = await fetch("http://43.130.247.176:8443/mcpserver", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

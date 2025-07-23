@@ -2,7 +2,7 @@ import type { MCPCard } from "@/types/mcpcard";
 
 // API base URL - should be environment variable in production
 const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:5190";
+  process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8443";
 const API_KEY = process.env.NEXT_PUBLIC_API_KEY || "your-default-api-key";
 
 // Mock data to use when API is unavailable

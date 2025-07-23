@@ -88,6 +88,11 @@ export default function AuthButton({ dict }: AuthButtonProps) {
     router.push("/my-servers")
   }
 
+  // 处理导航到API管理页面
+  const handleNavigateToApiManagement = () => {
+    router.push("/api-management")
+  }
+
   if (user) {
     const isWalletUser = user.user_id?.toString().startsWith("0x") || user.auth_methods?.some((auth: any) => auth.auth_type === 'web3')
     const displayName = user.username || user.email || "User"
@@ -133,6 +138,12 @@ export default function AuthButton({ dict }: AuthButtonProps) {
             className="cursor-pointer hover:bg-cyan-900/20 hover:text-cyan-400 focus:bg-cyan-900/20 focus:text-cyan-400"
           >
             My Servers
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            onClick={handleNavigateToApiManagement}
+            className="cursor-pointer hover:bg-cyan-900/20 hover:text-cyan-400 focus:bg-cyan-900/20 focus:text-cyan-400"
+          >
+            API Management
           </DropdownMenuItem>
           <DropdownMenuSeparator className="bg-cyan-900/30" />
           <DropdownMenuItem

@@ -31,12 +31,14 @@ export class AuthService {
     });
 
     // 设置HTTP-only Cookie
+    const isProduction = process.env.NODE_ENV === 'production';
     response.cookie('auth-session', token, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
+      secure: isProduction,
+      sameSite: isProduction ? 'lax' : 'lax', // 开发环境也使用lax
       maxAge: 7 * 24 * 60 * 60 * 1000, // 7天
       path: '/',
+      // 开发环境不设置domain，让浏览器自动处理
     });
   }
 
@@ -56,10 +58,11 @@ export class AuthService {
    * 清除会话Cookie
    */
   clearSession(response: Response): void {
+    const isProduction = process.env.NODE_ENV === 'production';
     response.clearCookie('auth-session', {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
+      secure: isProduction,
+      sameSite: isProduction ? 'lax' : 'lax',
       path: '/',
     });
   }
