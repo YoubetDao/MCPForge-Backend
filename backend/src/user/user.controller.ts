@@ -14,6 +14,7 @@ import {
   ValidationPipe,
   UsePipes,
   Put,
+  UseGuards,
 } from '@nestjs/common';
 import { UserService } from './user.service';
 import { CreateUserDto } from './dto/create-user.dto';
@@ -25,6 +26,13 @@ import { Response } from 'express';
 import { Web3ChallengeDto } from './dto/web3-challenge.dto';
 import { Web3AuthDto } from './dto/web3-auth.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { AuthService } from '../auth/auth.service';
+import { CookieAuthGuard } from '../auth/guards/cookie-auth.guard';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import { Roles } from '../auth/decorators/roles.decorator';
+import { SessionPayload } from '../auth/auth.service';
+import { UserRole } from './entities/user.entity';
 
 // 删除这个interface定义
 // interface Web3AuthDto {
@@ -35,21 +43,28 @@ import { UpdateUserDto } from './dto/update-user.dto';
 
 @Controller('user')
 export class UserController {
-  constructor(private readonly userService: UserService) {}
+  constructor(
+    private readonly userService: UserService,
+    private readonly authService: AuthService,
+  ) {}
 
   @Post()
-  create(@Body() createUserDto: CreateUserDto) {
+  @UseGuards(CookieAuthGuard)
+  create(@Body() createUserDto: CreateUserDto, @CurrentUser() user: SessionPayload) {
     return this.userService.create(createUserDto);
   }
 
   @Get()
-  findAll() {
+  @UseGuards(CookieAuthGuard, RolesGuard)
+  @Roles(UserRole.DEVELOPER)
+  findAll(@CurrentUser() user: SessionPayload) {
     return this.userService.findAll();
   }
 
   @Get('by-auth')
+  @UseGuards(CookieAuthGuard)
   @UsePipes(new ValidationPipe({ transform: true, whitelist: true }))
-  async findByAuthMethod(@Query() findByAuthDto: FindByAuthDto) {
+  async findByAuthMethod(@Query() findByAuthDto: FindByAuthDto, @CurrentUser() user: SessionPayload) {
     try {
       const user = await this.userService.findByAuthMethod(
         findByAuthDto.auth_type,
@@ -73,7 +88,8 @@ export class UserController {
   }
 
   @Get(':id')
-  async findOne(@Param('id', ParseIntPipe) id: number) {
+  @UseGuards(CookieAuthGuard)
+  async findOne(@Param('id', ParseIntPipe) id: number, @CurrentUser() user: SessionPayload) {
     try {
       return await this.userService.findOne(id);
     } catch (error) {
@@ -88,7 +104,8 @@ export class UserController {
   }
 
   @Put(':id')
-  async updateUser(@Param('id', ParseIntPipe) id: number, @Body() updateUserDto: UpdateUserDto) {
+  @UseGuards(CookieAuthGuard)
+  async updateUser(@Param('id', ParseIntPipe) id: number, @Body() updateUserDto: UpdateUserDto, @CurrentUser() user: SessionPayload) {
     try {
       // 直接传递 id 和 updateUserDto，不需要设置 user_id
       return await this.userService.updateUser(id, updateUserDto);
@@ -106,9 +123,11 @@ export class UserController {
 
 
   @Post(':id/bind-auth')
+  @UseGuards(CookieAuthGuard)
   async bindAuthMethod(
     @Param('id', ParseIntPipe) id: number,
     @Body() bindAuthMethodDto: BindAuthMethodDto,
+    @CurrentUser() user: SessionPayload,
   ) {
     try {
       return await this.userService.bindAuthMethod(id, bindAuthMethodDto);
@@ -124,7 +143,8 @@ export class UserController {
   }
 
   @Delete(':id')
-  async remove(@Param('id', ParseIntPipe) id: number) {
+  @UseGuards(CookieAuthGuard)
+  async remove(@Param('id', ParseIntPipe) id: number, @CurrentUser() user: SessionPayload) {
     try {
       await this.userService.remove(id);
       return { message: 'User deleted successfully' };
@@ -161,7 +181,10 @@ export class UserController {
       }
 
       const user = await this.userService.handleGitHubCallback(gitHubAuthDto);
-      
+
+      // 设置认证Cookie
+      await this.authService.createSession(user, res);
+
       const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
       res.redirect(`${frontendUrl}/auth/callback?user_id=${user.user_id}&success=true`);
     } catch (error) {
@@ -172,13 +195,20 @@ export class UserController {
   }
 
   @Post('auth/github/callback')
-  async githubCallbackPost(@Body() gitHubAuthDto: GitHubAuthDto) {
+  async githubCallbackPost(
+    @Body() gitHubAuthDto: GitHubAuthDto,
+    @Res({ passthrough: true }) response: Response,
+  ) {
     if (!gitHubAuthDto.code) {
       throw new HttpException('No authorization code provided', HttpStatus.BAD_REQUEST);
     }
 
     try {
       const user = await this.userService.handleGitHubCallback(gitHubAuthDto);
+
+      // 设置认证Cookie
+      await this.authService.createSession(user, response);
+
       return {
         success: true,
         user,
@@ -191,6 +221,19 @@ export class UserController {
         HttpStatus.UNAUTHORIZED,
       );
     }
+  }
+
+  // 登出接口
+  @Post('auth/logout')
+  @UseGuards(CookieAuthGuard)
+  async logout(@Res({ passthrough: true }) response: Response, @CurrentUser() user: SessionPayload) {
+    // 清除认证Cookie
+    this.authService.clearSession(response);
+
+    return {
+      success: true,
+      message: 'Logged out successfully',
+    };
   }
 
   // Web3 认证端点
@@ -209,13 +252,21 @@ export class UserController {
 
   @Post('auth/web3/verify')
   @UsePipes(new ValidationPipe({ transform: true, whitelist: true }))
-  async verifyWeb3Auth(@Body() web3AuthDto: Web3AuthDto) {
+  async verifyWeb3Auth(
+    @Body() web3AuthDto: Web3AuthDto,
+    @Res({ passthrough: true }) response: Response,
+  ) {
     try {
-      const user = await this.userService.verifyWeb3Auth(web3AuthDto);
+      const result = await this.userService.verifyWeb3Auth(web3AuthDto);
+
+      // 设置认证Cookie
+      await this.authService.createSession(result.user, response);
+
       return {
         success: true,
-        user,
-        message: 'Web3 authentication successful',
+        action: result.action,
+        user: result.user,
+        message: result.message,
       };
     } catch (error) {
       const errorMessage = error instanceof HttpException ? error.message : 'Web3 authentication failed';

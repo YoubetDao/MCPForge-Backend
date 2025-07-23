@@ -1,20 +1,30 @@
-import { Controller, Get, Post, Body, Param } from "@nestjs/common";
+import { Controller, Get, Post, Body, Param, UseGuards } from "@nestjs/common";
 import { McpCardService } from "./mcpcard.service";
 import { CreateMcpCardDto } from "./dto/create-mcpcard.dto";
 import { ImportMcpCardDto } from "./dto/import-mcpcard.dto";
 import { McpCard } from "./entities/mcpcard.entity";
+import { CookieAuthGuard } from "../auth/guards/cookie-auth.guard";
+import { RolesGuard } from "../auth/guards/roles.guard";
+import { CurrentUser } from "../auth/decorators/current-user.decorator";
+import { Roles } from "../auth/decorators/roles.decorator";
+import { SessionPayload } from "../auth/auth.service";
+import { UserRole } from "../user/entities/user.entity";
 
 @Controller("mcpcard")
 export class McpCardController {
   constructor(private readonly McpCardService: McpCardService) {}
 
   @Post()
-  create(@Body() createMcpCardDto: CreateMcpCardDto): Promise<McpCard> {
+  @UseGuards(CookieAuthGuard, RolesGuard)
+  @Roles(UserRole.DEVELOPER)
+  create(@Body() createMcpCardDto: CreateMcpCardDto, @CurrentUser() user: SessionPayload): Promise<McpCard> {
     return this.McpCardService.create(createMcpCardDto);
   }
 
   @Post("import")
-  import(@Body() importMcpCardDto: ImportMcpCardDto): Promise<McpCard> {
+  @UseGuards(CookieAuthGuard, RolesGuard)
+  @Roles(UserRole.DEVELOPER)
+  import(@Body() importMcpCardDto: ImportMcpCardDto, @CurrentUser() user: SessionPayload): Promise<McpCard> {
     return this.McpCardService.import(importMcpCardDto);
   }
 
