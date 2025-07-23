@@ -65,6 +65,22 @@ export class AuthService {
   }
 
   /**
+   * 生成Bearer Token（用于API测试）
+   */
+  async generateBearerToken(user: User): Promise<string> {
+    const payload: SessionPayload = {
+      userId: user.user_id,
+      username: user.username,
+      role: user.role,
+    };
+
+    // 生成JWT token，与Cookie中的token格式相同
+    return this.jwtService.sign(payload, {
+      expiresIn: '7d', // 7天过期
+    });
+  }
+
+  /**
    * 从Cookie字符串中解析特定Cookie
    */
   parseCookies(cookieHeader: string): Record<string, string> {

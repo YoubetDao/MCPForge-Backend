@@ -209,10 +209,14 @@ export class UserController {
       // 设置认证Cookie
       await this.authService.createSession(user, response);
 
+      // 生成Bearer Token用于API测试
+      const bearerToken = await this.authService.generateBearerToken(user);
+
       return {
         success: true,
         user,
         message: 'GitHub authentication successful',
+        bearer_token: bearerToken, // 添加Bearer Token
       };
     } catch (error) {
       const errorMessage = error instanceof HttpException ? error.message : 'GitHub authentication failed';
@@ -262,11 +266,15 @@ export class UserController {
       // 设置认证Cookie
       await this.authService.createSession(result.user, response);
 
+      // 生成Bearer Token用于API测试
+      const bearerToken = await this.authService.generateBearerToken(result.user);
+
       return {
         success: true,
         action: result.action,
         user: result.user,
         message: result.message,
+        bearer_token: bearerToken, // 添加Bearer Token
       };
     } catch (error) {
       const errorMessage = error instanceof HttpException ? error.message : 'Web3 authentication failed';

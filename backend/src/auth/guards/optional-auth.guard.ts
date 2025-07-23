@@ -16,15 +16,15 @@ export class OptionalAuthGuard implements CanActivate {
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest<Request>();
-    
-    // 从Cookie中获取认证token
-    const token = this.extractTokenFromCookies(request);
-    
+
+    // 尝试从多种方式获取token：Bearer Token 优先，然后是 Cookie
+    const token = this.extractTokenFromRequest(request);
+
     if (token) {
       try {
         // 验证token并获取用户信息
         const payload = await this.authService.validateSession(token);
-        
+
         if (payload) {
           // 将用户信息附加到请求对象
           request.user = payload;
@@ -39,6 +39,39 @@ export class OptionalAuthGuard implements CanActivate {
     return true;
   }
 
+  /**
+   * 从请求中提取token，支持多种方式
+   */
+  private extractTokenFromRequest(request: Request): string | undefined {
+    // 1. 优先检查 Authorization Bearer Token
+    const bearerToken = this.extractTokenFromBearer(request);
+    if (bearerToken) {
+      return bearerToken;
+    }
+
+    // 2. 然后检查 Cookie
+    const cookieToken = this.extractTokenFromCookies(request);
+    if (cookieToken) {
+      return cookieToken;
+    }
+
+    return undefined;
+  }
+
+  /**
+   * 从 Authorization 头中提取 Bearer Token
+   */
+  private extractTokenFromBearer(request: Request): string | undefined {
+    const authorization = request.headers.authorization;
+    if (authorization && authorization.startsWith('Bearer ')) {
+      return authorization.substring(7);
+    }
+    return undefined;
+  }
+
+  /**
+   * 从 Cookie 中提取 token
+   */
   private extractTokenFromCookies(request: Request): string | undefined {
     // 使用cookie-parser中间件解析的cookies
     if (request.cookies && request.cookies['auth-session']) {
