@@ -1,4 +1,6 @@
 require('@nomiclabs/hardhat-ethers');
+require('@nomicfoundation/hardhat-verify');
+require('dotenv').config();
 
 module.exports = {
   solidity: {
@@ -29,6 +31,12 @@ module.exports = {
       chainId: 56,
       accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : [],
       gasPrice: 5000000000, // 5 gwei
+    }
+  },
+  etherscan: {
+    apiKey: {
+      bscTestnet: process.env.BSCSCAN_API_KEY || "",
+      bsc: process.env.BSCSCAN_API_KEY || ""
     }
   }
 };

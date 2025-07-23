@@ -19,9 +19,16 @@
     "hardhat": "^2.19.0"
   },
   "devDependencies": {
-    "@nomiclabs/hardhat-etherscan": "^3.1.7"
+    "@nomicfoundation/hardhat-verify": "^2.1.0",
+    "@nomiclabs/hardhat-etherscan": "^3.1.7",
+    "dotenv": "^17.2.0"
   },
-  "keywords": ["smart-contract", "blockchain", "bsc", "subscription"],
+  "keywords": [
+    "smart-contract",
+    "blockchain",
+    "bsc",
+    "subscription"
+  ],
   "author": "",
   "license": "ISC"
 }
