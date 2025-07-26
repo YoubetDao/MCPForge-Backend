@@ -7,13 +7,92 @@ import MessageList from "@/components/chat/message-list"
 import ChatInput from "@/components/chat/chat-input"
 import { ChatProvider } from "@/components/chat/chat-context"
 import { Message, ToolCall, ToolResult } from "@/types/chat"
+import { ChatAPI } from "@/lib/api/chat"
+
+// 可用的工具定义
+const availableTools = [
+  {
+    name: "read_file",
+    description: "Read contents of a file",
+    inputSchema: {
+      type: "object",
+      properties: {
+        file_path: {
+          type: "string",
+          description: "Path to the file to read"
+        }
+      },
+      required: ["file_path"]
+    }
+  },
+  {
+    name: "write_file", 
+    description: "Write content to a file",
+    inputSchema: {
+      type: "object",
+      properties: {
+        file_path: {
+          type: "string",
+          description: "Path to the file to write"
+        },
+        content: {
+          type: "string", 
+          description: "Content to write to the file"
+        }
+      },
+      required: ["file_path", "content"]
+    }
+  },
+  {
+    name: "search_web",
+    description: "Search the web for information",
+    inputSchema: {
+      type: "object",
+      properties: {
+        query: {
+          type: "string",
+          description: "Search query"
+        }
+      },
+      required: ["query"]
+    }
+  },
+  {
+    name: "get_weather",
+    description: "Get weather information for a location",
+    inputSchema: {
+      type: "object",
+      properties: {
+        location: {
+          type: "string",
+          description: "City or location name"
+        }
+      },
+      required: ["location"]
+    }
+  },
+  {
+    name: "list_directory",
+    description: "List files in a directory",
+    inputSchema: {
+      type: "object",
+      properties: {
+        directory_path: {
+          type: "string",
+          description: "Path to the directory to list"
+        }
+      },
+      required: ["directory_path"]
+    }
+  }
+]
 
 function ChatPageContent() {
   const [messages, setMessages] = useState<Message[]>([
     {
       id: "welcome",
       role: "assistant",
-      content: "Welcome to MCPForge Chat! I'm your AI assistant. You can ask me questions or use MCP tools to enhance your experience. What would you like to do today?",
+      content: "Welcome to MCPForge Chat! I'm your AI assistant powered by OpenAI. You can ask me questions or use MCP tools to enhance your experience. What would you like to do today?",
       timestamp: new Date(),
     }
   ])
@@ -34,71 +113,41 @@ function ChatPageContent() {
     setIsLoading(true)
 
     try {
-      // 模拟AI回复，包含工具调用
-      setTimeout(() => {
-        let aiContent = `I received your message: "${content}". `
-        
-        const toolCalls: ToolCall[] = []
-        const toolResults: ToolResult[] = []
-        
-        // 如果有工具调用，模拟工具执行
-        if (selectedTools && selectedTools.length > 0) {
-          aiContent += `I'll help you with the requested tools. `
-          
-          selectedTools.forEach((toolName, index) => {
-            const toolCallId = `tool_${Date.now()}_${index}`
-            
-            // 创建工具调用
-            toolCalls.push({
-              id: toolCallId,
-              name: toolName,
-              arguments: { query: "sample parameter" }
-            })
-            
-            // 模拟工具执行结果
-            let resultContent = ""
-            switch (toolName) {
-              case "read_file":
-                resultContent = "File content: This is a sample file content that was read successfully."
-                break
-              case "write_file":
-                resultContent = "File written successfully to the specified path."
-                break
-              case "search_web":
-                resultContent = "Search results: Found 5 relevant results for your query."
-                break
-              case "get_weather":
-                resultContent = "Weather data: Sunny, 25°C, Humidity: 60%"
-                break
-              default:
-                resultContent = `Tool ${toolName} executed successfully.`
-            }
-            
-            toolResults.push({
-              toolCallId,
-              content: resultContent
-            })
-          })
-          
-          aiContent += `I've executed the requested tools and here are the results:`
-        } else {
-          aiContent += `This is a placeholder response. MCP tool integration is working! You can try selecting tools from the wrench icon above the input box or from the sidebar.`
-        }
-        
-        const aiMessage: Message = {
-          id: (Date.now() + 1).toString(),
-          role: "assistant",
-          content: aiContent,
-          timestamp: new Date(),
-          toolCalls: toolCalls.length > 0 ? toolCalls : undefined,
-          toolResults: toolResults.length > 0 ? toolResults : undefined,
-        }
-        
-        setMessages(prev => [...prev, aiMessage])
-        setIsLoading(false)
-      }, 1500) // 稍微增加延迟以模拟工具执行时间
+      // 准备发送给OpenAI的消息
+      const messagesToSend = [...messages, userMessage]
+      
+      // 准备工具定义
+      const toolsToSend = selectedTools?.length 
+        ? availableTools.filter(tool => selectedTools.includes(tool.name))
+        : availableTools // 如果没有选择特定工具，发送所有可用工具
+
+      // 调用OpenAI API
+      const response = await ChatAPI.sendMessageWithTools(messagesToSend, toolsToSend)
+      
+      // 创建AI回复消息
+      const aiMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        role: "assistant",
+        content: response.content,
+        timestamp: new Date(),
+        toolResults: response.toolResults,
+      }
+      
+      setMessages(prev => [...prev, aiMessage])
+      
     } catch (error) {
       console.error("Error sending message:", error)
+      
+      // 添加错误消息
+      const errorMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        role: "assistant",
+        content: `Sorry, I encountered an error: ${error instanceof Error ? error.message : 'Unknown error'}. Please check your OpenAI API key configuration.`,
+        timestamp: new Date(),
+      }
+      
+      setMessages(prev => [...prev, errorMessage])
+    } finally {
       setIsLoading(false)
     }
   }
