@@ -90,7 +90,9 @@ const mockMCPCards: MCPCard[] = [
 export async function getMCPCards(): Promise<MCPCard[]> {
   try {
     // First try to fetch from the API
-    const response = await fetch(`${API_BASE_URL}/mcpcard`);
+    const response = await fetch(`${API_BASE_URL}/mcpcard`, {
+      credentials: 'include', // 包含 cookies
+    });
 
     if (!response.ok) {
       console.warn(
@@ -112,7 +114,9 @@ export async function getMCPCards(): Promise<MCPCard[]> {
 export async function getMCPCardById(id: number): Promise<MCPCard | null> {
   try {
     // First try to fetch from the API
-    const response = await fetch(`${API_BASE_URL}/mcpcard/${id}`);
+    const response = await fetch(`${API_BASE_URL}/mcpcard/${id}`, {
+      credentials: 'include', // 包含 cookies
+    });
 
     if (!response.ok) {
       console.warn(
@@ -155,6 +159,7 @@ export async function startMCPServer(name: string, image: string) {
         Authorization: `Bearer ${API_KEY}`,
         "Cache-Control": "no-cache", // Prevent caching
       },
+      credentials: 'include', // 包含 cookies
       body: JSON.stringify(requestBody),
     });
 
@@ -292,7 +297,9 @@ export async function pollServerStatus(serverName: string): Promise<string> {
           `Polling attempt ${attempts}/${maxAttempts} for ${serverName}`
         );
 
-        const response = await fetch(`${API_BASE_URL}/mcpserver/${serverName}`);
+        const response = await fetch(`${API_BASE_URL}/mcpserver/${serverName}`, {
+          credentials: 'include', // 包含 cookies
+        });
 
         // Handle non-200 responses
         if (!response.ok) {

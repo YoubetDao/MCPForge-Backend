@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label"
 import { Copy, Eye, EyeOff, RefreshCw, Key, Shield, AlertCircle } from "lucide-react"
 import { toast } from "sonner"
 import { useRouter } from "next/navigation"
+import { getBearerToken } from "@/lib/api-client"
 
 export default function ApiManagementPage() {
   const [user, setUser] = useState<any>(null)
@@ -40,26 +41,12 @@ export default function ApiManagementPage() {
   const fetchBearerToken = async () => {
     setIsLoading(true)
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8443"
-      const response = await fetch(`${apiUrl}/auth/bearer-token`, {
-        method: "GET",
-        credentials: "include", // 包含Cookie
-        headers: {
-          "Content-Type": "application/json",
-        },
-      })
-
-      if (response.ok) {
-        const data = await response.json()
-        setBearerToken(data.bearer_token)
-        toast.success("Bearer Token获取成功")
-      } else {
-        const errorData = await response.json()
-        toast.error(`获取失败: ${errorData.message || "未知错误"}`)
-      }
+      const data = await getBearerToken()
+      setBearerToken(data.bearer_token)
+      toast.success("Bearer Token获取成功")
     } catch (error) {
       console.error("Error fetching bearer token:", error)
-      toast.error("网络错误，请稍后重试")
+      toast.error("获取失败，请确保已登录")
     } finally {
       setIsLoading(false)
     }

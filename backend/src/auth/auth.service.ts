@@ -32,10 +32,13 @@ export class AuthService {
 
     // 设置HTTP-only Cookie
     const isProduction = process.env.NODE_ENV === 'production';
+    // 检查是否使用 HTTPS（通过检查是否有 SSL 证书或者 URL 协议）
+    const isHttps = process.env.HTTPS === 'true' || process.env.SSL_ENABLED === 'true';
+
     response.cookie('auth-session', token, {
       httpOnly: true,
-      secure: isProduction,
-      sameSite: isProduction ? 'lax' : 'lax', // 开发环境也使用lax
+      secure: isProduction && isHttps, // 只有在生产环境且使用 HTTPS 时才启用 secure
+      sameSite: 'lax', // 统一使用 lax
       maxAge: 7 * 24 * 60 * 60 * 1000, // 7天
       path: '/',
       // 开发环境不设置domain，让浏览器自动处理
@@ -59,10 +62,12 @@ export class AuthService {
    */
   clearSession(response: Response): void {
     const isProduction = process.env.NODE_ENV === 'production';
+    const isHttps = process.env.HTTPS === 'true' || process.env.SSL_ENABLED === 'true';
+
     response.clearCookie('auth-session', {
       httpOnly: true,
-      secure: isProduction,
-      sameSite: isProduction ? 'lax' : 'lax',
+      secure: isProduction && isHttps,
+      sameSite: 'lax',
       path: '/',
     });
   }

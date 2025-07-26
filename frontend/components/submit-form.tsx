@@ -42,7 +42,7 @@ export default function SubmitForm() {
           "Content-Type": "application/json",
           "Cache-Control": "no-cache",
         },
-        credentials: "omit",
+        credentials: "include", // 包含 cookies
         body: JSON.stringify({ github: githubUrl }),
       });
 
