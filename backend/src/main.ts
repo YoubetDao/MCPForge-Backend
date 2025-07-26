@@ -4,6 +4,7 @@ import { ValidationPipe } from "@nestjs/common";
 import * as fs from "fs";
 import { INestApplication } from "@nestjs/common";
 import { SwaggerModule, DocumentBuilder } from "@nestjs/swagger";
+import * as cookieParser from 'cookie-parser';
 
 async function bootstrap() {
   let app: INestApplication;
@@ -35,7 +36,18 @@ async function bootstrap() {
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup("api-docs", app, document);
 
-  app.enableCors();
+  // 配置CORS支持credentials
+  app.enableCors({
+    origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'Cookie'],
+    exposedHeaders: ['Set-Cookie'],
+  });
+
+  // 配置Cookie解析中间件
+  app.use(cookieParser());
+
   app.useGlobalPipes(new ValidationPipe());
   await app.listen(process.env.PORT ?? 3000);
 
