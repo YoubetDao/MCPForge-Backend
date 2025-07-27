@@ -16,6 +16,7 @@ export { UpdateUserDto } from './models/UpdateUserDto';
 export { Web3AuthDto } from './models/Web3AuthDto';
 
 export { AppService } from './services/AppService';
+export { AuthService } from './services/AuthService';
 export { McpCardService } from './services/McpCardService';
 export { McpServerService } from './services/McpServerService';
 export { UserService } from './services/UserService';

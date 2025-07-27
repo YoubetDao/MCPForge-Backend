@@ -65,6 +65,12 @@ export default function Home() {
               <ThemeToggle />
             </div>
             <Link
+              href="/chat"
+              className="hidden sm:flex text-cyan-500 dark:text-cyan-400 hover:text-cyan-400 dark:hover:text-cyan-300 font-medium transition-colors cyber-box-sm"
+            >
+              Chat
+            </Link>
+            <Link
               href="/submit"
               className="hidden sm:flex text-pink-500 dark:text-pink-500 hover:text-pink-400 dark:hover:text-pink-400 font-medium transition-colors cyber-box-sm"
             >
