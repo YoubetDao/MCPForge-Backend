@@ -6,6 +6,7 @@ import { ConfigModule, ConfigService } from "@nestjs/config";
 import { McpserverModule } from "./mcpserver/mcpserver.module";
 import { McpCardModule } from "./mcpcard/mcpcardmodule";
 import { UserModule } from "./user/user.module";
+import { AuthModule } from "./auth/auth.module";
 
 @Module({
   imports: [
@@ -29,6 +30,7 @@ import { UserModule } from "./user/user.module";
     McpserverModule,
     McpCardModule,
     UserModule,
+    AuthModule,
   ],
   controllers: [AppController],
   providers: [AppService],

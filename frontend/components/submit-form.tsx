@@ -34,7 +34,7 @@ export default function SubmitForm() {
     try {
       setIsLoading(true);
       const baseUrl =
-        process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:5190";
+        process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8443";
 
       const response = await fetch(`${baseUrl}/mcpcard/import`, {
         method: "POST",
@@ -42,7 +42,7 @@ export default function SubmitForm() {
           "Content-Type": "application/json",
           "Cache-Control": "no-cache",
         },
-        credentials: "omit",
+        credentials: "include", // 包含 cookies
         body: JSON.stringify({ github: githubUrl }),
       });
 

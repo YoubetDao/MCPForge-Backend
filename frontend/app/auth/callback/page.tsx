@@ -3,22 +3,19 @@
 import { useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Loader2 } from 'lucide-react'
+import { getCurrentUser } from '@/lib/api-client'
 
 // 简单的认证服务
 class AuthService {
   // 处理登录回调
   static async handleCallback(userId: string): Promise<any> {
     try {
-      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8443'
-      const response = await fetch(`${backendUrl}/user/${userId}`)
-      if (!response.ok) {
-        throw new Error('Failed to fetch user data')
-      }
-      const userData = await response.json()
-      
+      // 使用统一的 API 客户端，会自动包含 cookies
+      const userData = await getCurrentUser()
+
       // 打印后端返回的响应
       console.log('GitHub login successful! Backend response:', userData)
-      
+
       return userData
     } catch (error) {
       console.error('Error fetching user data:', error)
@@ -42,9 +39,8 @@ export default function AuthCallback() {
       
       AuthService.handleCallback(userId)
         .then((userData) => {
-          console.log('User data received and saved to localStorage:', userData)
-          // 保存用户信息到 localStorage
-          localStorage.setItem("user", JSON.stringify(userData))
+          console.log('User data received, cookies should be set by backend:', userData)
+          // 不再使用 localStorage，依赖后端设置的 httpOnly cookies
           // 触发认证状态变化事件
           window.dispatchEvent(new CustomEvent("auth-change"))
           // 重定向到首页

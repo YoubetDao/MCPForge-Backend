@@ -12,7 +12,6 @@ import {
   Copy,
   Clock,
   ServerIcon,
-  PenToolIcon as Tool,
   MessageSquare,
   PlayCircle,
   Loader2,
@@ -25,19 +24,18 @@ import {
   pollServerStatus,
   deleteMCPServer,
 } from "@/lib/api";
-import { distributor } from "@/lib/distributor";
 import ReactMarkdown from "react-markdown";
-import { Transaction } from '@mysten/sui/transactions';
-import { SuiClient } from '@mysten/sui/client';
-import { useCurrentAccount, useSignAndExecuteTransaction, useConnectWallet, useWallets } from '@mysten/dapp-kit';
+// import { Transaction } from '@mysten/sui/transactions';
+// import { SuiClient } from '@mysten/sui/client';
+// import { useCurrentAccount, useSignAndExecuteTransaction, useConnectWallet, useWallets } from '@mysten/dapp-kit';
 // import { WebCryptoSigner } from '@mysten/signers/webcrypto';
-import '@mysten/dapp-kit/dist/index.css';
+// import '@mysten/dapp-kit/dist/index.css';
+import { createMCPServerSubscription } from '@/lib/contracts/MCPServerSubscription';
 
 // Add Ethereum to the window object type
 declare global {
   interface Window {
     ethereum?: any;
-    suiWallet?: any;
   }
 }
 
@@ -60,16 +58,88 @@ export default function ServerDetailPage() {
   const [serverPhase, setServerPhase] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  // 使用 dapp-kit 的钱包连接器
-  const currentAccount = useCurrentAccount();
-  const { mutate: signAndExecuteTransaction } = useSignAndExecuteTransaction();
-  const { mutate: connectWallet } = useConnectWallet();
-  const wallets = useWallets();
+  // BSC 钱包状态
+  const [bscAccount, setBscAccount] = useState<string | null>(null);
+  const [isConnecting, setIsConnecting] = useState(false);
   
-  // 计算 Sui 探索器 URL
+  // 检查钱包连接状态
+  useEffect(() => {
+    checkWalletConnection();
+  }, []);
+  
+  const checkWalletConnection = async () => {
+    if (window.ethereum) {
+      try {
+        const accounts = await window.ethereum.request({ method: 'eth_accounts' });
+        if (accounts.length > 0) {
+          setBscAccount(accounts[0]);
+        }
+      } catch (error) {
+        console.error('Error checking wallet connection:', error);
+      }
+    }
+  };
+  
+  const connectBscWallet = async () => {
+    setIsConnecting(true);
+    setTransactionError(null);
+    
+    if (!window.ethereum) {
+      setTransactionError("No BSC wallet found. Please install MetaMask.");
+      setIsConnecting(false);
+      return;
+    }
+    
+    try {
+      // 切换到 BSC 测试网
+      await window.ethereum.request({
+        method: 'wallet_switchEthereumChain',
+        params: [{ chainId: '0x61' }], // BSC Testnet chainId
+      });
+    } catch (switchError: any) {
+      // 如果网络不存在，添加 BSC 测试网
+      if (switchError.code === 4902) {
+        try {
+          await window.ethereum.request({
+            method: 'wallet_addEthereumChain',
+            params: [{
+              chainId: '0x61',
+              chainName: 'BSC Testnet',
+              nativeCurrency: {
+                name: 'BNB',
+                symbol: 'BNB',
+                decimals: 18
+              },
+              rpcUrls: ['https://bsc-testnet.public.blastapi.io'],
+              blockExplorerUrls: ['https://testnet.bscscan.com/']
+            }]
+          });
+        } catch (addError) {
+          setTransactionError('Failed to add BSC Testnet to wallet.');
+          setIsConnecting(false);
+          return;
+        }
+      } else {
+        setTransactionError('Failed to switch to BSC Testnet.');
+        setIsConnecting(false);
+        return;
+      }
+    }
+    
+    try {
+      const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+      setBscAccount(accounts[0]);
+      setIsConnecting(false);
+    } catch (error) {
+      setTransactionError('Wallet connection rejected.');
+      setIsConnecting(false);
+    }
+  };
+  
+  // 计算 BSC 探索器 URL
   const explorerUrl = useMemo(() => {
     if (!transactionHash) return '';
-    return `https://suiexplorer.com/txblock/${transactionHash}?network=testnet`;
+    return `https://testnet.bscscan.com/tx/${transactionHash}`;
   }, [transactionHash]);
 
   // 检查服务器状态
@@ -106,133 +176,22 @@ export default function ServerDetailPage() {
     checkStatus();
   }, [server?.title]);
 
-  // 处理转账
-  const handleTransferEth = async () => {
-    setTransactionError(null);
-    setTransactionHash(null);
-    setIsWalletConnecting(true);
 
-    if (!window.ethereum) {
-      setTransactionError("No Ethereum wallet found. Please install MetaMask.");
-      setIsWalletConnecting(false);
-      return;
-    }
-    // 先切换到 OP Sepolia (chainId: 0xaa37dc)
-    try {
-      await window.ethereum.request({
-        method: "wallet_switchEthereumChain",
-        params: [{ chainId: "0xaa37dc" }],
-      });
-    } catch (switchError: any) {
-      // 如果没有添加该链，则尝试添加
-      if (switchError.code === 4902) {
-        try {
-          await window.ethereum.request({
-            method: "wallet_addEthereumChain",
-            params: [
-              {
-                chainId: "0xaa37dc",
-                chainName: "OP Sepolia",
-                rpcUrls: ["https://sepolia.optimism.io"],
-                nativeCurrency: { name: "ETH", symbol: "ETH", decimals: 18 },
-                blockExplorerUrls: ["https://sepolia-optimism.etherscan.io"],
-              },
-            ],
-          });
-        } catch (addError) {
-          setTransactionError("Failed to add OP Sepolia network to wallet.");
-          setIsWalletConnecting(false);
-          return;
-        }
-      } else {
-        setTransactionError("Failed to switch to OP Sepolia network.");
-        setIsWalletConnecting(false);
-        return;
-      }
-    }
-    // 切换成功后再请求账户授权
-    let accounts;
-    try {
-      accounts = await window.ethereum.request({
-        method: "eth_requestAccounts",
-      });
-    } catch (err) {
-      setTransactionError("Wallet connection rejected.");
-      setIsWalletConnecting(false);
-      return;
-    }
-    const addressFrom = accounts[0];
-    setIsWalletConnecting(false);
-    setIsTransactionPending(true);
-    const id = Math.random().toString(36).substring(2, 15); // random id
-
-    // mock github 用户和金额
-    const users = [{ login: "wfnuser" }, { login: "null" }];
-    const amounts = [1, 2];
-
-    const githubIds = users.map((user) => user.login);
-    const [symbol, decimals] = await distributor.getTokenSymbolAndDecimals();
-    const amountsInWei = amounts.map((amount) =>
-      BigInt(Math.floor(amount * 10 ** Number(decimals)))
-    );
-    const totalAmount = amountsInWei.reduce((a, b) => a + b, 0n);
-    const currentAllowance = await distributor.getAllowance(addressFrom);
-    const MIN_ALLOWANCE = BigInt(50) * BigInt(10) ** BigInt(decimals);
-    if (currentAllowance < totalAmount) {
-      await distributor.approveAllowance(MIN_ALLOWANCE * BigInt(10));
-    }
-    const tx = await distributor.createRedPacket(id, githubIds, amountsInWei);
-    setTransactionHash(tx.hash);
-    setIsTransactionPending(false);
-  };
-
-  const handleTransferSui = async () => {
+  const handleTransferBsc = async () => {
     setTransactionError(null);
     setTransactionHash(null);
     setIsWalletConnecting(true);
 
     // 如果未连接钱包，尝试连接
-    if (!currentAccount) {
-      try {
-        console.log("尝试连接钱包...");
-        console.log("可用钱包:", wallets.map(w => w.name).join(', '));
-
-        // 检查是否有可用钱包
-        if (wallets.length === 0) {
-          setTransactionError("No Sui wallets found. Please install a Sui wallet extension first.");
-          setIsWalletConnecting(false);
-          return;
-        }
-
-        // 尝试连接第一个可用的钱包
-        await new Promise<void>((resolve, reject) => {
-          connectWallet(
-            { wallet: wallets[0] },
-            {
-              onSuccess: () => {
-                console.log("钱包连接成功");
-                resolve();
-              },
-              onError: (error) => {
-                console.error("钱包连接失败:", error);
-                reject(error);
-              }
-            }
-          );
-        });
-        
-        // 连接成功后等待短暂时间以确保 currentAccount 已更新
-        await new Promise(resolve => setTimeout(resolve, 500));
-        
-        // 如果仍然没有连接，显示错误
-        if (!currentAccount) {
-          setTransactionError("Wallet connection was not completed. Please try again or connect manually.");
-          setIsWalletConnecting(false);
-          return;
-        }
-      } catch (error: any) {
-        console.error("钱包连接错误:", error);
-        setTransactionError(error.message || "Failed to connect wallet");
+    if (!bscAccount) {
+      await connectBscWallet();
+      // 等待连接完成
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      // 再次检查是否连接成功
+      const accounts = await window.ethereum?.request({ method: 'eth_accounts' });
+      if (!accounts || accounts.length === 0) {
+        setTransactionError("Please connect your wallet first.");
         setIsWalletConnecting(false);
         return;
       }
@@ -243,99 +202,21 @@ export default function ServerDetailPage() {
       setIsWalletConnecting(false);
       setIsTransactionPending(true);
 
-      // 创建 Sui 客户端
-      // doc: 
-      const client = new SuiClient({
-        url: 'https://fullnode.testnet.sui.io:443'
-      });
-      const tx = new Transaction();
-      const packageId = "0xe0db550526f7b03c9a282d636a8fb4c4763302d65a9fed7696cd4615cb98ab40"
-      const moduleId = "distributor"
-      const functionId = "create_red_packet"
-      const stateId = "0x8069cd532621de0508c25ba72b3440e9aed09fc8b65a99957b79a319705f4e22"
-      const hasBalanceCoinObjectId = "0x95c1c659eaf7d38787d4f2a90c69fe3a8c44a4cc2425a88dce19c8215a713493"
-      var uuid = "1234567890" + Math.random().toString(36).substring(2, 15);
-      var githubids = ["githubuser1", "githubuser2"]
-      var amounts = [10, 10]
-      var args = [
-        tx.object(stateId),
-        tx.pure.string(uuid),
-        tx.pure.vector('string', githubids),
-        tx.pure.vector('u64', amounts),
-        tx.object(hasBalanceCoinObjectId)
-      ]
-      tx.moveCall({
-        target: `${packageId}::${moduleId}::${functionId}`,
-        // object IDs must be wrapped in moveCall arguments
-        arguments: args,
-      });
-      const result = await new Promise<string>((resolve, reject) => {
-        signAndExecuteTransaction(
-          {
-            transaction: tx,
-          },
-          {
-            onSuccess: (response) => {
-              if (response && response.digest) {
-                resolve(response.digest);
-              } else {
-                reject(new Error('Transaction failed: No digest returned'));
-              }
-            },
-            onError: (error) => {
-              reject(error);
-            }
-          }
-        );
-      });
-      // client.signAndExecuteTransaction({ signer: keypair, transaction: tx });
-      // new client call
-      // const tx = await client.moveCall({
-      // console.log("tx:", tx);
-
-
-      // mock github 用户和金额
-      // const users = [{ login: "wfnuser" }, { login: "null" }];
-      // const amounts = [1, 2];
-
-      // // 创建交易
-      // const tx = new Transaction();
+      // 创建合约实例
+      const mcpContract = await createMCPServerSubscription();
       
-      // // 添加转账操作 - 使用 PaySui 模式（从 gas 对象拆分并转账）
-      // // 这里转账 1 SUI（转换为最小单位是 1 * 10^9）
-      // const [coin] = tx.splitCoins(tx.gas, [1000000000]);
+      // 购买订阅
+      // 注意：这会为当前用户购买/延长平台级订阅
+      // 用户购买一次订阅后，可以使用平台上的所有 MCP 服务器
+      const tx = await mcpContract.purchaseSubscription();
       
-      // // 转到特定地址 - 这里应该是项目方或合约的地址
-      // tx.transferObjects([coin], "0x5ea6aee5c032a14c417ee07cb1d48a8c3f65f92d03eaaa42864042a4d8d43ec8");
+      console.log("Transaction sent:", tx.hash);
+      setTransactionHash(tx.hash);
       
-      // // 设置 gas 预算
-      // tx.setGasBudget(10000000);
+      // 等待交易确认
+      const receipt = await tx.wait();
+      console.log("Transaction confirmed:", receipt);
       
-      // // 构建交易字节
-      // const txBytes = await tx.build({ client });
-
-      // 使用钱包签名并执行交易
-      // const result = await new Promise<string>((resolve, reject) => {
-      //   signAndExecuteTransaction(
-      //     {
-      //       transaction: tx,
-      //     },
-      //     {
-      //       onSuccess: (response) => {
-      //         if (response && response.digest) {
-      //           resolve(response.digest);
-      //         } else {
-      //           reject(new Error('Transaction failed: No digest returned'));
-      //         }
-      //       },
-      //       onError: (error) => {
-      //         reject(error);
-      //       }
-      //     }
-      //   );
-      // });
-
-      setTransactionHash(result);
       setIsTransactionPending(false);
       
       // 一旦支付成功，就不再显示转账按钮
@@ -820,16 +701,16 @@ export default function ServerDetailPage() {
               <CardContent className="p-0">
                 <div className="p-4 border-b border-gray-200 dark:border-gray-800">
                   <h3 className="font-bold text-gray-800 dark:text-gray-100 flex items-center justify-between">
-                    Sui Wallet status
+                    BSC Wallet Status
                   </h3>
                 </div>
 
                 <div className="p-4">
-                  {currentAccount ? (
+                  {bscAccount ? (
                     <div className="text-cyan-600 dark:text-cyan-400 font-mono">
                       <p className="break-all flex items-center">
                         <span className="inline-block w-3 h-3 bg-green-500 mr-2 rounded-full"></span>
-                        Connected: {currentAccount.address.slice(0, 6)}...{currentAccount.address.slice(-4)}
+                        Connected: {bscAccount.slice(0, 6)}...{bscAccount.slice(-4)}
                       </p>
                     </div>
                   ) : (
@@ -840,15 +721,10 @@ export default function ServerDetailPage() {
                         </p>
                         <Button
                           className="ml-auto bg-gradient-to-r from-cyan-500 to-pink-500 hover:from-cyan-400 hover:to-pink-400 text-black font-cyberpunk border-0 h-12"
-                          onClick={() => {
-                            if (wallets.length > 0) {
-                              connectWallet({ wallet: wallets[0] });
-                            } else {
-                              alert("Sui wallet not detected. Please install a Sui wallet extension such as Sui Wallet or Suiet.");
-                            }
-                          }}
+                          onClick={connectBscWallet}
+                          disabled={isConnecting}
                         >
-                          Connect your wallet
+                          {isConnecting ? 'Connecting...' : 'Connect your wallet'}
                         </Button>
                       </div>
                   )}
@@ -860,7 +736,7 @@ export default function ServerDetailPage() {
             {showTransferButton && !transactionHash && (
               <Button
                 className="w-full bg-gradient-to-r from-cyan-500 to-pink-500 hover:from-cyan-400 hover:to-pink-400 text-black font-cyberpunk border-0 h-12"
-                onClick={handleTransferSui}
+                onClick={handleTransferBsc}
                 disabled={isWalletConnecting || isTransactionPending}
               >
                 {isWalletConnecting ? (
