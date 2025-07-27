@@ -5,6 +5,15 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import Link from "next/link";
 // import { Transaction } from '@mysten/sui/transactions';
 import {
@@ -31,6 +40,8 @@ import ReactMarkdown from "react-markdown";
 // import { WebCryptoSigner } from '@mysten/signers/webcrypto';
 // import '@mysten/dapp-kit/dist/index.css';
 import { createMCPServerSubscription } from '@/lib/contracts/MCPServerSubscription';
+import AuthButton from "@/components/auth-button";
+import { useLanguage } from "@/lib/language-context";
 
 // Add Ethereum to the window object type
 declare global {
@@ -42,6 +53,7 @@ declare global {
 export default function ServerDetailPage() {
   const params = useParams();
   const slug = params.slug as string;
+  const { dictionary: dict } = useLanguage();
   const [isLoading, setIsLoading] = useState(true);
   const [server, setServer] = useState<any>(null);
   const [isWalletConnecting, setIsWalletConnecting] = useState(false);
@@ -57,6 +69,11 @@ export default function ServerDetailPage() {
   const [isServerRunning, setIsServerRunning] = useState(false);
   const [serverPhase, setServerPhase] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isSubscriptionValid, setIsSubscriptionValid] = useState(false);
+  const [subscriptionInfo, setSubscriptionInfo] = useState<any>(null);
+  const [isCheckingSubscription, setIsCheckingSubscription] = useState(false);
+  const [selectedPlan, setSelectedPlan] = useState<'pro' | 'plus' | null>(null);
+  const [isSubscriptionDialogOpen, setIsSubscriptionDialogOpen] = useState(false);
 
   // BSC 钱包状态
   const [bscAccount, setBscAccount] = useState<string | null>(null);
@@ -64,12 +81,129 @@ export default function ServerDetailPage() {
   
   // 检查钱包连接状态
   useEffect(() => {
+    // 先检查用户是否已登录
+    const storedUser = localStorage.getItem("user");
+    if (!storedUser) {
+      // 用户未登录，不检查钱包连接
+      setSubscriptionInfo(null);
+      setIsSubscriptionValid(false);
+      setShowTransferButton(true);
+      return;
+    }
+    
     checkWalletConnection();
+    
+    // 监听账户和网络变化
+    if (window.ethereum) {
+      const handleAccountsChanged = (accounts: string[]) => {
+        if (accounts.length > 0) {
+          setBscAccount(accounts[0]);
+        } else {
+          setBscAccount(null);
+          setSubscriptionInfo(null);
+          setIsSubscriptionValid(false);
+        }
+      };
+      
+      const handleChainChanged = () => {
+        // 重新加载页面以确保正确的网络状态
+        window.location.reload();
+      };
+      
+      window.ethereum.on('accountsChanged', handleAccountsChanged);
+      window.ethereum.on('chainChanged', handleChainChanged);
+      
+      return () => {
+        if (window.ethereum.removeListener) {
+          window.ethereum.removeListener('accountsChanged', handleAccountsChanged);
+          window.ethereum.removeListener('chainChanged', handleChainChanged);
+        }
+      };
+    }
   }, []);
+
+  // 监听用户登出事件
+  useEffect(() => {
+    const handleAuthChange = async () => {
+      // 检查用户是否已登出
+      const storedUser = localStorage.getItem("user");
+      if (!storedUser) {
+        // 用户已登出，清除所有状态
+        setBscAccount(null);
+        setSubscriptionInfo(null);
+        setIsSubscriptionValid(false);
+        setShowTransferButton(true);
+        setTransactionHash(null);
+        setServerUrl(null);
+        setServerPhase(null);
+        setIsServerRunning(false);
+        setSelectedPlan(null);
+        setIsSubscriptionDialogOpen(false);
+        
+        // 清除任何钱包相关的错误信息
+        setTransactionError(null);
+      }
+    };
+
+    window.addEventListener('auth-change', handleAuthChange);
+    
+    return () => {
+      window.removeEventListener('auth-change', handleAuthChange);
+    };
+  }, []);
+
+  // 检查订阅状态
+  useEffect(() => {
+    // 先检查用户是否已登录
+    const storedUser = localStorage.getItem("user");
+    if (!storedUser) {
+      // 用户未登录，清除所有订阅相关状态
+      setSubscriptionInfo(null);
+      setIsSubscriptionValid(false);
+      setShowTransferButton(true);
+      return;
+    }
+    
+    // 用户已登录且有BSC账户，检查订阅状态
+    if (bscAccount) {
+      checkSubscriptionStatus();
+    }
+  }, [bscAccount]);
   
   const checkWalletConnection = async () => {
     if (window.ethereum) {
       try {
+        // 检查当前网络
+        const chainId = await window.ethereum.request({ method: 'eth_chainId' });
+        
+        // 如果不是BSC测试网，尝试切换
+        if (chainId !== '0x61') {
+          try {
+            await window.ethereum.request({
+              method: 'wallet_switchEthereumChain',
+              params: [{ chainId: '0x61' }], // BSC Testnet chainId
+            });
+          } catch (switchError: any) {
+            // 如果网络不存在，添加 BSC 测试网
+            if (switchError.code === 4902) {
+              await window.ethereum.request({
+                method: 'wallet_addEthereumChain',
+                params: [{
+                  chainId: '0x61',
+                  chainName: 'BSC Testnet',
+                  nativeCurrency: {
+                    name: 'BNB',
+                    symbol: 'BNB',
+                    decimals: 18
+                  },
+                  rpcUrls: ['https://bsc-testnet.public.blastapi.io'],
+                  blockExplorerUrls: ['https://testnet.bscscan.com/']
+                }]
+              });
+            }
+          }
+        }
+        
         const accounts = await window.ethereum.request({ method: 'eth_accounts' });
         if (accounts.length > 0) {
           setBscAccount(accounts[0]);
@@ -77,6 +211,41 @@ export default function ServerDetailPage() {
       } catch (error) {
         console.error('Error checking wallet connection:', error);
       }
+    }
+  };
+
+  const checkSubscriptionStatus = async (accountAddress?: string) => {
+    const account = accountAddress || bscAccount;
+    if (!account) return;
+    
+    setIsCheckingSubscription(true);
+    try {
+      // 确保连接到BSC测试网
+      if (window.ethereum) {
+        const chainId = await window.ethereum.request({ method: 'eth_chainId' });
+        if (chainId !== '0x61') {
+          console.log('Not on BSC Testnet, skipping subscription check');
+          return;
+        }
+      }
+      
+      const mcpContract = await createMCPServerSubscription();
+      const info = await mcpContract.getSubscriptionInfo(account);
+      
+      setSubscriptionInfo(info);
+      setIsSubscriptionValid(info.isValid);
+      
+      // 如果订阅有效，隐藏支付按钮
+      if (info.isValid) {
+        setShowTransferButton(false);
+      }
+    } catch (error: any) {
+      console.error('Error checking subscription status:', error);
+      if (error.message?.includes('Unsupported chain ID')) {
+        setTransactionError('Please switch to BSC Testnet to use this service.');
+      }
+    } finally {
+      setIsCheckingSubscription(false);
     }
   };
   
@@ -91,6 +260,11 @@ export default function ServerDetailPage() {
     }
     
     try {
+      // 清除当前账户状态
+      setBscAccount(null);
+      setSubscriptionInfo(null);
+      setIsSubscriptionValid(false);
+      
       // 切换到 BSC 测试网
       await window.ethereum.request({
         method: 'wallet_switchEthereumChain',
@@ -127,9 +301,36 @@ export default function ServerDetailPage() {
     }
     
     try {
+      // 直接请求账户，这会返回当前在 MetaMask 中选中的账户
       const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
-      setBscAccount(accounts[0]);
-      setIsConnecting(false);
+      
+      // 如果返回的账户与之前的不同，或者用户想要切换账户
+      // 可以通过 wallet_requestPermissions 强制显示账户选择器
+      if (accounts && accounts.length > 0) {
+        // 检查是否是用户在 MetaMask 中当前选中的账户
+        const currentAccount = accounts[0];
+        setBscAccount(currentAccount);
+        setIsConnecting(false);
+        
+        // 连接成功后立即检查订阅状态
+        checkSubscriptionStatus(currentAccount);
+      } else {
+        // 如果没有账户，请求权限
+        await window.ethereum.request({
+          method: 'wallet_requestPermissions',
+          params: [{
+            eth_accounts: {}
+          }]
+        });
+        
+        // 再次请求账户
+        const newAccounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+        if (newAccounts && newAccounts[0]) {
+          setBscAccount(newAccounts[0]);
+          checkSubscriptionStatus(newAccounts[0]);
+        }
+        setIsConnecting(false);
+      }
     } catch (error) {
       setTransactionError('Wallet connection rejected.');
       setIsConnecting(false);
@@ -177,6 +378,16 @@ export default function ServerDetailPage() {
   }, [server?.title]);
 
 
+  const handleSubscribe = async () => {
+    if (!selectedPlan) {
+      setTransactionError("Please select a subscription plan.");
+      return;
+    }
+    
+    setIsSubscriptionDialogOpen(false);
+    await handleTransferBsc();
+  };
+
   const handleTransferBsc = async () => {
     setTransactionError(null);
     setTransactionHash(null);
@@ -221,6 +432,9 @@ export default function ServerDetailPage() {
       
       // 一旦支付成功，就不再显示转账按钮
       setShowTransferButton(false);
+      
+      // 重新检查订阅状态
+      await checkSubscriptionStatus();
       
     } catch (error: any) {
       console.error("Transaction error:", error);
@@ -469,8 +683,10 @@ export default function ServerDetailPage() {
       </div>
 
       <div className="container mx-auto py-6 px-4 relative z-1">
-        {/* Breadcrumb navigation */}
-        <div className="flex items-center gap-2 mb-6 text-sm text-gray-600 dark:text-gray-400">
+        {/* Header with Auth Button */}
+        <div className="flex items-center justify-between mb-6">
+          {/* Breadcrumb navigation */}
+          <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
           <Link
             href="/"
             className="flex items-center hover:text-cyan-500 dark:hover:text-cyan-400 transition-colors"
@@ -489,6 +705,15 @@ export default function ServerDetailPage() {
           <span className="text-cyan-600 dark:text-cyan-400">
             {server.title}
           </span>
+          </div>
+          
+          {/* Auth Button */}
+          <AuthButton dict={dict?.auth || {
+            profile: "Profile",
+            dashboard: "Dashboard",
+            settings: "Settings",
+            signOut: "Sign out"
+          }} />
         </div>
 
         {/* Server header */}
@@ -707,11 +932,35 @@ export default function ServerDetailPage() {
 
                 <div className="p-4">
                   {bscAccount ? (
-                    <div className="text-cyan-600 dark:text-cyan-400 font-mono">
-                      <p className="break-all flex items-center">
-                        <span className="inline-block w-3 h-3 bg-green-500 mr-2 rounded-full"></span>
-                        Connected: {bscAccount.slice(0, 6)}...{bscAccount.slice(-4)}
-                      </p>
+                    <div>
+                      <div className="text-cyan-600 dark:text-cyan-400 font-mono">
+                        <p className="break-all flex items-center">
+                          <span className="inline-block w-3 h-3 bg-green-500 mr-2 rounded-full"></span>
+                          Connected: {bscAccount.slice(0, 6)}...{bscAccount.slice(-4)}
+                        </p>
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="mt-3 border-cyan-700 hover:border-cyan-500 text-cyan-600 hover:text-cyan-400"
+                        onClick={async () => {
+                          try {
+                            // 强制显示账户选择器
+                            await window.ethereum.request({
+                              method: 'wallet_requestPermissions',
+                              params: [{
+                                eth_accounts: {}
+                              }]
+                            });
+                            // 重新连接钱包
+                            await connectBscWallet();
+                          } catch (error) {
+                            console.error('Failed to switch account:', error);
+                          }
+                        }}
+                      >
+                        Switch Account
+                      </Button>
                     </div>
                   ) : (
                       <div className="flex flex-wrap items-center gap-4">
@@ -732,30 +981,191 @@ export default function ServerDetailPage() {
               </CardContent>
             </Card>
 
-            {/* Transfer ETH button - 只在服务器不存在且未进行支付时显示 */}
-            {showTransferButton && !transactionHash && (
-              <Button
-                className="w-full bg-gradient-to-r from-cyan-500 to-pink-500 hover:from-cyan-400 hover:to-pink-400 text-black font-cyberpunk border-0 h-12"
-                onClick={handleTransferBsc}
-                disabled={isWalletConnecting || isTransactionPending}
-              >
-                {isWalletConnecting ? (
-                  <>
-                    <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                    Connecting wallet...
-                  </>
-                ) : isTransactionPending ? (
-                  <>
-                    <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                    Transaction processing...
-                  </>
-                ) : (
-                  <>
-                    <PlayCircle className="mr-2 h-5 w-5" />
-                    Pay MCP server hosting fee
-                  </>
-                )}
-              </Button>
+            {/* 显示订阅状态信息 - 只在用户登录时显示 */}
+            {subscriptionInfo && localStorage.getItem("user") && (
+              <Card className="bg-white dark:bg-black border border-gray-200 dark:border-cyan-900/50 overflow-hidden">
+                <div className="absolute top-0 left-0 w-full h-0.5 bg-gradient-to-r from-transparent via-cyan-500 to-transparent"></div>
+                <div className="absolute bottom-0 left-0 w-full h-0.5 bg-gradient-to-r from-transparent via-pink-500 to-transparent"></div>
+                
+                <CardContent className="p-0">
+                  <div className="p-4 border-b border-gray-200 dark:border-gray-800">
+                    <h3 className="font-bold text-gray-800 dark:text-gray-100">Subscription Status</h3>
+                  </div>
+                  <div className="p-4">
+                    {subscriptionInfo.isValid ? (
+                      <div className="text-green-600 dark:text-green-400">
+                        <p className="flex items-center mb-2">
+                          <span className="inline-block w-3 h-3 bg-green-500 mr-2 rounded-full"></span>
+                          Active Subscription
+                        </p>
+                        <p className="text-sm text-gray-600 dark:text-gray-400">
+                          Expires in {subscriptionInfo.remainingDays} days
+                        </p>
+                        <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">
+                          Expiry: {new Date(subscriptionInfo.expiryTime * 1000).toLocaleDateString()}
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="text-yellow-600 dark:text-yellow-400">
+                        <p className="flex items-center">
+                          <span className="inline-block w-3 h-3 bg-yellow-500 mr-2 rounded-full"></span>
+                          No Active Subscription
+                        </p>
+                        <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
+                          Purchase a subscription to start MCP servers
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Subscription Dialog and Button - 只在用户登录时显示 */}
+            {showTransferButton && !isSubscriptionValid && !transactionHash && localStorage.getItem("user") && (
+              <Dialog open={isSubscriptionDialogOpen} onOpenChange={setIsSubscriptionDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button
+                    className="w-full bg-gradient-to-r from-cyan-500 to-pink-500 hover:from-cyan-400 hover:to-pink-400 text-black font-cyberpunk border-0 h-12"
+                    disabled={isWalletConnecting || isTransactionPending}
+                  >
+                    {isWalletConnecting ? (
+                      <>
+                        <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                        Connecting wallet...
+                      </>
+                    ) : isTransactionPending ? (
+                      <>
+                        <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                        Transaction processing...
+                      </>
+                    ) : (
+                      <>
+                        <PlayCircle className="mr-2 h-5 w-5" />
+                        Subscribe to MCP Forge
+                      </>
+                    )}
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-2xl bg-black border border-cyan-900/50">
+                  <DialogHeader>
+                    <DialogTitle className="text-2xl font-cyberpunk text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-pink-500">
+                      Choose Your Subscription Plan
+                    </DialogTitle>
+                    <DialogDescription className="text-gray-400">
+                      Select a plan to unlock MCP server hosting capabilities
+                    </DialogDescription>
+                  </DialogHeader>
+                  
+                  <div className="grid gap-4 py-4">
+                    {/* Pro Plan */}
+                    <div 
+                      className={`p-6 border rounded-lg cursor-pointer transition-all ${
+                        selectedPlan === 'pro' 
+                          ? 'border-cyan-500 bg-cyan-500/10' 
+                          : 'border-gray-700 hover:border-cyan-700'
+                      }`}
+                      onClick={() => setSelectedPlan('pro')}
+                    >
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <h3 className="text-xl font-bold text-white mb-2">Monthly Pro</h3>
+                          <p className="text-cyan-400 text-2xl font-bold mb-3">0.01 BNB<span className="text-sm text-gray-400">/month</span></p>
+                          <ul className="space-y-2 text-gray-300">
+                            <li className="flex items-center">
+                              <span className="text-cyan-500 mr-2">✓</span>
+                              Run up to 50 MCP servers simultaneously
+                            </li>
+                            <li className="flex items-center">
+                              <span className="text-cyan-500 mr-2">✓</span>
+                              Up to 10 client connections per server
+                            </li>
+                            <li className="flex items-center">
+                              <span className="text-cyan-500 mr-2">✓</span>
+                              Access to chat functionality
+                            </li>
+                          </ul>
+                        </div>
+                        <div className="ml-4">
+                          <div className={`w-6 h-6 rounded-full border-2 ${
+                            selectedPlan === 'pro' 
+                              ? 'border-cyan-500 bg-cyan-500' 
+                              : 'border-gray-500'
+                          }`}>
+                            {selectedPlan === 'pro' && (
+                              <div className="w-full h-full flex items-center justify-center">
+                                <div className="w-3 h-3 rounded-full bg-black"></div>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Plus Plan */}
+                    <div 
+                      className="p-6 border rounded-lg cursor-not-allowed transition-all relative overflow-hidden border-gray-700 opacity-60"
+                    >
+                      <div className="absolute top-2 right-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white text-xs font-bold px-3 py-1 rounded-full shadow-lg animate-pulse">
+                        COMING SOON
+                      </div>
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <h3 className="text-xl font-bold text-gray-400 mb-2">Monthly Plus</h3>
+                          <p className="text-gray-500 text-2xl font-bold mb-3">0.01 BNB<span className="text-sm text-gray-400">/month</span></p>
+                          <ul className="space-y-2 text-gray-500">
+                            <li className="flex items-center">
+                              <span className="text-gray-600 mr-2">✓</span>
+                              Everything in Pro plan
+                            </li>
+                            <li className="flex items-center">
+                              <span className="text-gray-600 mr-2">✓</span>
+                              Unlimited MCP servers
+                            </li>
+                            <li className="flex items-center">
+                              <span className="text-gray-600 mr-2">✓</span>
+                              Unlimited client connections
+                            </li>
+                            <li className="flex items-center">
+                              <span className="text-gray-600 mr-2">✓</span>
+                              Priority support & advanced features
+                            </li>
+                          </ul>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <DialogFooter>
+                    {transactionError && (
+                      <div className="text-sm text-red-500 dark:text-red-400 mr-auto">
+                        {transactionError}
+                      </div>
+                    )}
+                    <Button
+                      variant="outline"
+                      onClick={() => setIsSubscriptionDialogOpen(false)}
+                      className="border-gray-700 hover:border-gray-600"
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      className="bg-gradient-to-r from-cyan-500 to-pink-500 hover:from-cyan-400 hover:to-pink-400 text-black font-cyberpunk border-0"
+                      onClick={handleSubscribe}
+                      disabled={!selectedPlan || isTransactionPending}
+                    >
+                      {isTransactionPending ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Processing...
+                        </>
+                      ) : (
+                        'Subscribe Now'
+                      )}
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
             )}
 
             {/* Show transaction error if any */}
@@ -800,8 +1210,8 @@ export default function ServerDetailPage() {
               </div>
             )}
 
-            {/* 只在支付成功后显示启动/停止服务器按钮 */}
-            {(!showTransferButton || transactionHash) && (
+            {/* 只在用户登录且订阅有效时显示启动/停止服务器按钮 */}
+            {isSubscriptionValid && localStorage.getItem("user") && (
               <Button
                 className={`w-full mt-4 bg-gradient-to-r ${
                   isServerRunning

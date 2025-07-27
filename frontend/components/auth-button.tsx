@@ -71,9 +71,27 @@ export default function AuthButton({ dict }: AuthButtonProps) {
   }, [])
 
   // 处理登出
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    // 清除用户信息
     localStorage.removeItem("user")
     setUser(null)
+    
+    // 尝试撤销钱包权限（这会断开网站与钱包的连接）
+    if (window.ethereum) {
+      try {
+        // 这个方法会撤销网站访问钱包的权限
+        await window.ethereum.request({
+          method: 'wallet_revokePermissions',
+          params: [{
+            eth_accounts: {}
+          }]
+        });
+      } catch (error) {
+        // 有些钱包可能不支持这个方法，忽略错误
+        console.log('Failed to revoke wallet permissions:', error);
+      }
+    }
+    
     // 触发自定义事件通知其他组件
     window.dispatchEvent(new CustomEvent("auth-change"))
   }
@@ -91,6 +109,11 @@ export default function AuthButton({ dict }: AuthButtonProps) {
   // 处理导航到API管理页面
   const handleNavigateToApiManagement = () => {
     router.push("/api-management")
+  }
+
+  // 处理导航到Billing页面
+  const handleNavigateToBilling = () => {
+    router.push("/billing")
   }
 
   if (user) {
@@ -144,6 +167,12 @@ export default function AuthButton({ dict }: AuthButtonProps) {
             className="cursor-pointer hover:bg-cyan-900/20 hover:text-cyan-400 focus:bg-cyan-900/20 focus:text-cyan-400"
           >
             API Management
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            onClick={handleNavigateToBilling}
+            className="cursor-pointer hover:bg-cyan-900/20 hover:text-cyan-400 focus:bg-cyan-900/20 focus:text-cyan-400"
+          >
+            Billing
           </DropdownMenuItem>
           <DropdownMenuSeparator className="bg-cyan-900/30" />
           <DropdownMenuItem
