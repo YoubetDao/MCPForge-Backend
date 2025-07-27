@@ -178,6 +178,16 @@ export class UserService {
         });
     }
     /**
+     * @returns any
+     * @throws ApiError
+     */
+    public static userControllerLogout(): CancelablePromise<any> {
+        return __request(OpenAPI, {
+            method: 'POST',
+            url: '/user/auth/logout',
+        });
+    }
+    /**
      * @param address
      * @returns any
      * @throws ApiError
