@@ -1,9 +1,9 @@
-"use client";
+'use client';
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import {
   Card,
   CardContent,
@@ -11,12 +11,12 @@ import {
   CardFooter,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card";
-import { toast } from "@/components/ui/use-toast";
-import { Github } from "lucide-react";
+} from '@/components/ui/card';
+import { toast } from '@/components/ui/use-toast';
+import { Github } from 'lucide-react';
 
 export default function SubmitForm() {
-  const [githubUrl, setGithubUrl] = useState("");
+  const [githubUrl, setGithubUrl] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
 
@@ -25,8 +25,8 @@ export default function SubmitForm() {
 
     if (!githubUrl) {
       toast({
-        title: "请输入GitHub仓库地址",
-        variant: "destructive",
+        title: '请输入GitHub仓库地址',
+        variant: 'destructive',
       });
       return;
     }
@@ -34,15 +34,15 @@ export default function SubmitForm() {
     try {
       setIsLoading(true);
       const baseUrl =
-        process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8443";
+        process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8443';
 
       const response = await fetch(`${baseUrl}/mcpcard/import`, {
-        method: "POST",
+        method: 'POST',
         headers: {
-          "Content-Type": "application/json",
-          "Cache-Control": "no-cache",
+          'Content-Type': 'application/json',
+          'Cache-Control': 'no-cache',
         },
-        credentials: "include", // 包含 cookies
+        credentials: 'include', // 包含 cookies
         body: JSON.stringify({ github: githubUrl }),
       });
 
@@ -50,35 +50,35 @@ export default function SubmitForm() {
 
       if (response.status === 201) {
         toast({
-          title: "Successfully submitted",
-          description: `Successfully imported ${data.name || "MCP Server"}`,
+          title: 'Successfully submitted',
+          description: `Successfully imported ${data.name || 'MCP Server'}`,
         });
 
-        setGithubUrl("");
+        setGithubUrl('');
         setTimeout(() => {
-          router.push("/");
+          router.push('/');
         }, 1500);
         return;
       }
 
       if (!response.ok) {
-        throw new Error(data.message || "Submit failed");
+        throw new Error(data.message || 'Submit failed');
       }
 
       toast({
-        title: "Submit successfully",
-        description: `Successfully imported ${data.name || "MCP Server"}`,
+        title: 'Submit successfully',
+        description: `Successfully imported ${data.name || 'MCP Server'}`,
       });
 
-      setGithubUrl("");
+      setGithubUrl('');
     } catch (error) {
       toast({
-        title: "Submit failed",
+        title: 'Submit failed',
         description:
           error instanceof Error
             ? error.message
-            : "Failed to connect to server",
-        variant: "destructive",
+            : 'Failed to connect to server',
+        variant: 'destructive',
       });
     } finally {
       setIsLoading(false);
@@ -162,7 +162,7 @@ export default function SubmitForm() {
                     Submitting...
                   </div>
                 ) : (
-                  "Submit"
+                  'Submit'
                 )}
               </Button>
             </CardFooter>

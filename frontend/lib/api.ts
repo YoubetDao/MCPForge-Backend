@@ -401,8 +401,8 @@ export async function deleteMCPServer(serverName: string): Promise<void> {
       method: 'DELETE',
       headers: {
         'Cache-Control': 'no-cache', // Prevent caching
-        Authorization: `Bearer ${API_KEY}`,
       },
+      credentials: 'include',
     });
 
     console.log(`Delete response status: ${response.status}`);

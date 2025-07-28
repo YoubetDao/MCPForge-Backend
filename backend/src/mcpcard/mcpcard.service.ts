@@ -3,12 +3,27 @@ import {
   NotFoundException,
   HttpException,
   HttpStatus,
-} from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository, DeepPartial } from "typeorm";
-import { McpCard } from "./entities/mcpcard.entity";
-import { ImportMcpCardDto } from "./dto/import-mcpcard.dto";
-import { ConfigService } from "@nestjs/config";
+} from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository, DeepPartial } from 'typeorm';
+import { McpCard } from './entities/mcpcard.entity';
+import { ImportMcpCardDto } from './dto/import-mcpcard.dto';
+import { ConfigService } from '@nestjs/config';
+
+// 定义 Deepflow API 响应类型
+interface DeepflowResponse {
+  success: boolean;
+  mcpServerContent?: {
+    name: string;
+    author: string;
+    tags: string[];
+    description: string;
+    overview: string;
+    tools?: any;
+    dockerImage: string;
+  };
+  message?: string;
+}
 
 @Injectable()
 export class McpCardService {
@@ -17,12 +32,12 @@ export class McpCardService {
   constructor(
     @InjectRepository(McpCard)
     private McpCardRepository: Repository<McpCard>,
-    private configService: ConfigService
+    private configService: ConfigService,
   ) {}
 
   async create(createMcpCardDto: DeepPartial<McpCard>): Promise<McpCard> {
     return this.McpCardRepository.save(
-      this.McpCardRepository.create(createMcpCardDto)
+      this.McpCardRepository.create(createMcpCardDto),
     );
   }
 
@@ -35,7 +50,7 @@ export class McpCardService {
     if (!result) {
       throw new NotFoundException(`McpCard with ID ${id} not found`);
     }
-    return result as McpCard;
+    return result;
   }
 
   async import(importMcpCardDto: ImportMcpCardDto): Promise<McpCard> {
@@ -45,31 +60,36 @@ export class McpCardService {
 
       // Get the Deepflow service URL from environment
       const deepflowServiceUrl = this.configService.get<string>(
-        "DEEPFLOW_SERVICE_URL"
+        'DEEPFLOW_SERVICE_URL',
       );
       if (!deepflowServiceUrl) {
-        throw new Error("DEEPFLOW_SERVICE_URL is not configured");
+        throw new Error('DEEPFLOW_SERVICE_URL is not configured');
       }
+
+      console.log('Deepflow API URL:', `${deepflowServiceUrl}/v1/mcp/import`);
+      console.log('GitHub URL:', githubUrl);
 
       // Call Deepflow API to get MCP server details
       const response = await fetch(`${deepflowServiceUrl}/v1/mcp/import`, {
-        method: "POST",
+        method: 'POST',
         headers: {
-          "Content-Type": "application/json",
+          'Content-Type': 'application/json',
         },
         body: JSON.stringify({ github: githubUrl }),
       });
 
+      console.log('Deepflow API response:', response);
+
       if (!response.ok) {
         throw new Error(
-          `Deepflow API returned ${response.status}: ${response.statusText}`
+          `Deepflow API returned ${response.status}: ${response.statusText}`,
         );
       }
 
-      const data = await response.json();
+      const data = (await response.json()) as DeepflowResponse;
 
       if (!data.success || !data.mcpServerContent) {
-        throw new Error("Failed to get MCP server content from Deepflow");
+        throw new Error('Failed to get MCP server content from Deepflow');
       }
 
       const serverContent = data.mcpServerContent;
@@ -90,7 +110,7 @@ export class McpCardService {
     } catch (error) {
       throw new HttpException(
         `Failed to import MCP server: ${(error as Error).message}`,
-        HttpStatus.INTERNAL_SERVER_ERROR
+        HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
   }
@@ -100,9 +120,9 @@ export class McpCardService {
     url = url.toLowerCase();
 
     // Handle GitHub short format (username/repo)
-    if (!url.includes("://")) {
+    if (!url.includes('://')) {
       // Remove @ prefix if present
-      if (url.startsWith("@")) {
+      if (url.startsWith('@')) {
         url = url.substring(1);
       }
 
@@ -113,7 +133,7 @@ export class McpCardService {
     }
 
     // Handle full URLs with @ prefix
-    if (url.startsWith("@")) {
+    if (url.startsWith('@')) {
       url = url.substring(1);
     }
 
@@ -123,6 +143,6 @@ export class McpCardService {
   private extractRepoName(githubUrl: string): string {
     // Extract repository name from GitHub URL
     const match = githubUrl.match(/github\.com\/[^/]+\/([^/]+)/);
-    return match ? match[1] : "Unknown Repository";
+    return match ? match[1] : 'Unknown Repository';
   }
 }
