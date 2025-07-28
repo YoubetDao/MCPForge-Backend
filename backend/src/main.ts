@@ -1,9 +1,9 @@
-import { NestFactory } from "@nestjs/core";
-import { AppModule } from "./app.module";
-import { ValidationPipe } from "@nestjs/common";
-import * as fs from "fs";
-import { INestApplication } from "@nestjs/common";
-import { SwaggerModule, DocumentBuilder } from "@nestjs/swagger";
+import { NestFactory } from '@nestjs/core';
+import { AppModule } from './app.module';
+import { ValidationPipe } from '@nestjs/common';
+import * as fs from 'fs';
+import { INestApplication } from '@nestjs/common';
+import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import * as cookieParser from 'cookie-parser';
 
 async function bootstrap() {
@@ -12,59 +12,67 @@ async function bootstrap() {
   try {
     // 尝试读取 SSL 证书
     const httpsOptions = {
-      key: fs.readFileSync("ssl/private.key"),
-      cert: fs.readFileSync("ssl/certificate.crt"),
+      key: fs.readFileSync('ssl/private.key'),
+      cert: fs.readFileSync('ssl/certificate.crt'),
     };
 
     // 如果证书存在，使用 HTTPS
     app = await NestFactory.create(AppModule, {
       httpsOptions,
     });
-    console.log("Server running with HTTPS");
+    console.log('Server running with HTTPS');
   } catch {
     // 如果证书不存在，使用 HTTP
     app = await NestFactory.create(AppModule);
-    console.log("Server running with HTTP");
+    console.log('Server running with HTTP');
   }
 
   const config = new DocumentBuilder()
-    .setTitle("MCPForge API")
-    .setDescription("The API description for MCPForge backend")
-    .setVersion("1.0")
+    .setTitle('MCPForge API')
+    .setDescription('The API description for MCPForge backend')
+    .setVersion('1.0')
     .build();
 
   const document = SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup("api-docs", app, document);
+  SwaggerModule.setup('api-docs', app, document);
 
   // 简化 CORS 配置 - 默认支持 netlify.app 和 localhost
   app.enableCors({
-    origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
-      // 如果没有 origin（Postman、移动端等），允许访问
-      if (!origin) {
-        return callback(null, true);
-      }
-
-      // 允许所有 localhost 和 127.0.0.1（开发环境）
-      if (origin.includes('localhost') || origin.includes('127.0.0.1')) {
-        return callback(null, true);
-      }
-
-      // 允许所有 netlify.app 和 vercel.app 域名
-      if (origin.endsWith('.netlify.app') || origin.endsWith('.vercel.app')) {
-        return callback(null, true);
-      }
-
-      // 拒绝其他域名
-      callback(new Error('Not allowed by CORS'));
+    origin: (
+      origin: string | undefined,
+      callback: (err: Error | null, allow?: boolean) => void,
+    ) => {
+      return callback(null, true);
     },
     credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'Cookie', 'X-Requested-With'],
+    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
+    allowedHeaders: [
+      'Content-Type',
+      'Authorization',
+      'Cookie',
+      'X-Requested-With',
+      'Cache-Control',
+      'cache-control',
+      'Accept',
+      'Accept-Language',
+      'Accept-Encoding',
+      'User-Agent',
+      'Referer',
+      'Origin',
+      'Connection',
+      'Upgrade-Insecure-Requests',
+      'If-Modified-Since',
+      'If-None-Match',
+      'Pragma',
+      'Sec-Fetch-Dest',
+      'Sec-Fetch-Mode',
+      'Sec-Fetch-Site',
+    ],
     exposedHeaders: ['Set-Cookie'],
   });
 
   // 配置Cookie解析中间件
-  app.use(cookieParser());
+  app.use(cookieParser() as any);
 
   app.useGlobalPipes(new ValidationPipe());
   await app.listen(process.env.PORT ?? 3000);
