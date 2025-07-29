@@ -7,10 +7,13 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Separator } from "@/components/ui/separator"
 import { Loader2, Server, Plus, Edit, ExternalLink } from "lucide-react"
 import Link from "next/link"
+import { getMcpServerList } from "@/lib/api"
 
 export default function ProfilePage() {
   const [user, setUser] = useState<any>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [mcpServers, setMcpServers] = useState<any[]>([])
+  const [isLoadingServers, setIsLoadingServers] = useState(false)
 
   // 在组件挂载时检查localStorage中的用户信息
   useEffect(() => {
@@ -66,8 +69,27 @@ export default function ProfilePage() {
       .substring(0, 2)
   }
 
-  // 模拟用户的MCP服务器数据
-  const mockServers = []
+  // 获取用户的MCP服务器
+  useEffect(() => {
+    const fetchMcpServers = async () => {
+      if (!isAuthenticated) return
+      
+      setIsLoadingServers(true)
+      try {
+        const response = await getMcpServerList()
+        // 假设返回的数据在 response.data 中
+        if (response.data && Array.isArray(response.data)) {
+          setMcpServers(response.data)
+        }
+      } catch (error) {
+        console.error('Error fetching MCP servers:', error)
+      } finally {
+        setIsLoadingServers(false)
+      }
+    }
+
+    fetchMcpServers()
+  }, [isAuthenticated])
 
   // 创建默认用户数据，当用户未登录时使用
   const defaultUser = {
@@ -206,17 +228,25 @@ export default function ProfilePage() {
                       <Link href="/">Sign In</Link>
                     </Button>
                   </div>
-                ) : mockServers.length > 0 ? (
+                ) : isLoadingServers ? (
+                  <div className="text-center py-10">
+                    <Loader2 className="h-8 w-8 animate-spin text-cyan-500 mx-auto mb-4" />
+                    <p className="text-gray-600 dark:text-gray-400">Loading your servers...</p>
+                  </div>
+                ) : mcpServers.length > 0 ? (
                   <div className="grid grid-cols-1 gap-4">
-                    {mockServers.map((server, index) => (
+                    {mcpServers.map((server, index) => (
                       <div
                         key={index}
                         className="p-4 border border-gray-200 dark:border-cyan-900/50 rounded-md bg-gray-50 dark:bg-black/60 hover:border-cyan-500/50 transition-colors"
                       >
                         <div className="flex justify-between items-start">
                           <div>
-                            <h3 className="font-bold text-gray-800 dark:text-gray-200">{server.title}</h3>
-                            <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{server.description}</p>
+                            <h3 className="font-bold text-gray-800 dark:text-gray-200">{server.metadata?.name || server.name || 'Unnamed Server'}</h3>
+                            <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                              Status: {server.status?.phase || 'Unknown'}
+                              {server.spec?.image && ` | Image: ${server.spec.image}`}
+                            </p>
                           </div>
                           <Button variant="ghost" size="sm" className="text-cyan-600 dark:text-cyan-400">
                             <ExternalLink className="h-4 w-4" />

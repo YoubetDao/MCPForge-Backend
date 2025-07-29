@@ -283,6 +283,7 @@ export class McpServerService {
           'ory_at_wnTc9_uxMrQGq48rkMnihSqaGpOQCCO76bJwjlKqb68.SsZB--RuAUSP09gZva4FnScLpfWDcv94xKwRF1GQkr8',
       };
     }
+    let memory = name === 'wikipedia-mcp' ? '1Gi' : '2Gi';
     try {
       const url = `${this.K8S_API_HOST}/apis/${this.K8S_API_GROUP}/${this.K8S_API_VERSION}/namespaces/${this.K8S_NAMESPACE}/${this.K8S_RESOURCE}`;
       const envArray = Object.entries(envs).map(([key, value]) => ({
@@ -309,11 +310,11 @@ export class McpServerService {
           resources: {
             limits: {
               cpu: '1',
-              memory: '1Gi',
+              memory: memory,
             },
             requests: {
               cpu: '1',
-              memory: '1Gi',
+              memory: memory,
             },
           },
           transport: 'stdio',

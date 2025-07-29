@@ -7,11 +7,13 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Separator } from "@/components/ui/separator"
 import { Loader2, Server, Plus, Edit, ExternalLink, Trash2 } from "lucide-react"
 import Link from "next/link"
+import { getMcpServerList } from "@/lib/api"
 
 export default function MyServersPage() {
   const [user, setUser] = useState<any>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [servers, setServers] = useState<any[]>([])
+  const [isLoadingServers, setIsLoadingServers] = useState(false)
 
   // 在组件挂载时检查localStorage中的用户信息
   useEffect(() => {
@@ -43,31 +45,36 @@ export default function MyServersPage() {
     }
   }, [])
 
-  // 模拟获取用户的服务器数据
+  // 获取用户的服务器数据
   useEffect(() => {
-    if (user) {
-      // 这里应该调用后端 API 获取用户的服务器列表
-      // 暂时使用模拟数据
-      const mockServers = [
-        {
-          id: 1,
-          name: "Wiki MCP Server",
-          description: "A powerful MCP server for Wikipedia integration",
-          status: "running",
-          created_at: "2024-01-15",
-          updated_at: "2024-01-20"
-        },
-        {
-          id: 2,
-          name: "File System MCP",
-          description: "MCP server for file system operations",
-          status: "stopped",
-          created_at: "2024-01-10",
-          updated_at: "2024-01-18"
+    const fetchServers = async () => {
+      if (!user) return
+      
+      setIsLoadingServers(true)
+      try {
+        const response = await getMcpServerList()
+        console.log('MCP Servers response:', response)
+        
+        // 直接使用 response.items，因为类型定义已经正确
+        if (response.items && Array.isArray(response.items)) {
+          console.log(`Found ${response.items.length} servers`)
+          if (response.items.length > 0) {
+            console.log('First server name:', response.items[0].metadata?.name)
+          }
+          setServers(response.items)
+        } else {
+          console.log('No items found in response')
+          setServers([])
         }
-      ]
-      setServers(mockServers)
+      } catch (error) {
+        console.error('Error fetching MCP servers:', error)
+        setServers([])
+      } finally {
+        setIsLoadingServers(false)
+      }
     }
+
+    fetchServers()
   }, [user])
 
   const isAuthenticated = !!user
@@ -127,10 +134,17 @@ export default function MyServersPage() {
               </Button>
             </CardContent>
           </Card>
+        ) : isLoadingServers ? (
+          <div className="flex items-center justify-center py-20">
+            <div className="text-center">
+              <Loader2 className="h-10 w-10 animate-spin text-cyan-500 mx-auto mb-4" />
+              <p className="text-gray-600 dark:text-gray-400">Loading your servers...</p>
+            </div>
+          </div>
         ) : servers.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {servers.map((server) => (
-              <Card key={server.id} className="bg-white dark:bg-black border border-gray-200 dark:border-cyan-900/50 overflow-hidden hover:border-cyan-500/50 transition-colors">
+            {servers.map((server, index) => (
+              <Card key={server.metadata?.uid || index} className="bg-white dark:bg-black border border-gray-200 dark:border-cyan-900/50 overflow-hidden hover:border-cyan-500/50 transition-colors">
                 <div className="absolute top-0 left-0 w-full h-0.5 bg-gradient-to-r from-transparent via-cyan-500 to-transparent"></div>
                 <div className="absolute bottom-0 left-0 w-full h-0.5 bg-gradient-to-r from-transparent via-pink-500 to-transparent"></div>
 
@@ -138,31 +152,52 @@ export default function MyServersPage() {
                   <div className="flex justify-between items-start">
                     <div className="flex-1">
                       <CardTitle className="text-lg font-cyberpunk text-gray-800 dark:text-gray-100">
-                        {server.name}
+                        {server.metadata?.name || 'Unnamed Server'}
                       </CardTitle>
                       <CardDescription className="text-gray-600 dark:text-gray-400 mt-1">
-                        {server.description}
+                        {server.spec?.image?.split('@')[0] || server.spec?.image || 'No image specified'}
                       </CardDescription>
                     </div>
-                    <div className={`px-2 py-1 rounded text-xs font-mono ${
-                      server.status === 'running' 
-                        ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400' 
-                        : 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400'
-                    }`}>
-                      {server.status.toUpperCase()}
+                    <div className={`px-2 py-1 rounded text-xs font-mono bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400`}>
+                      RUNNING
                     </div>
                   </div>
                 </CardHeader>
 
                 <CardContent className="space-y-4">
                   <div className="text-sm text-gray-600 dark:text-gray-400 space-y-1 font-mono">
-                    <p>Created: {server.created_at}</p>
-                    <p>Updated: {server.updated_at}</p>
+                    <p>Created: {server.metadata?.creationTimestamp ? new Date(server.metadata.creationTimestamp).toLocaleString() : 'N/A'}</p>
+                    <p>Transport: {server.spec?.transport || 'stdio'}</p>
+                    <p>Port: {server.spec?.port || 'N/A'}</p>
+                    {server.spec?.resources && (
+                      <p>Resources: {server.spec.resources.requests?.cpu || '0'} CPU, {server.spec.resources.requests?.memory || '0'}</p>
+                    )}
                   </div>
+
+                  {server.status?.url && (
+                    <>
+                      <Separator className="bg-gray-200 dark:bg-cyan-900/30" />
+                      <div className="break-all">
+                        <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">Server URL:</p>
+                        <p className="text-xs text-cyan-600 dark:text-cyan-400 font-mono">{server.status.url}</p>
+                      </div>
+                    </>
+                  )}
 
                   <Separator className="bg-gray-200 dark:bg-cyan-900/30" />
 
                   <div className="flex space-x-2">
+                    {server.status?.url && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="flex-1 border-gray-300 dark:border-cyan-900/50 text-gray-700 dark:text-gray-300 hover:bg-cyan-500/10 hover:text-cyan-600 dark:hover:text-cyan-400 hover:border-cyan-500/50"
+                        onClick={() => window.open(server.status.url, '_blank')}
+                      >
+                        <ExternalLink className="mr-2 h-3 w-3" />
+                        Open URL
+                      </Button>
+                    )}
                     <Button
                       variant="outline"
                       size="sm"
@@ -170,14 +205,6 @@ export default function MyServersPage() {
                     >
                       <Edit className="mr-2 h-3 w-3" />
                       Edit
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="flex-1 border-gray-300 dark:border-cyan-900/50 text-gray-700 dark:text-gray-300 hover:bg-cyan-500/10 hover:text-cyan-600 dark:hover:text-cyan-400 hover:border-cyan-500/50"
-                    >
-                      <ExternalLink className="mr-2 h-3 w-3" />
-                      View
                     </Button>
                     <Button
                       variant="outline"

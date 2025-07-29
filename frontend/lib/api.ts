@@ -489,3 +489,79 @@ export async function deleteMCPServer(serverName: string): Promise<void> {
     }
   }
 }
+
+export interface MCPServerItem {
+  apiVersion: string;
+  kind: string;
+  metadata: {
+    name: string;
+    namespace: string;
+    uid: string;
+    creationTimestamp: string;
+    resourceVersion: string;
+    generation: number;
+    finalizers?: string[];
+    managedFields?: any[];
+  };
+  spec: {
+    image: string;
+    port: number;
+    transport: string;
+    env?: Array<{ name: string; value: string }>;
+    permissionProfile?: {
+      name: string;
+      type: string;
+    };
+    resources?: {
+      limits?: {
+        cpu?: string;
+        memory?: string;
+      };
+      requests?: {
+        cpu?: string;
+        memory?: string;
+      };
+    };
+  };
+  status: {
+    phase: string;
+    message: string;
+    url?: string;
+  };
+}
+
+interface K8sResponse {
+  apiVersion: string;
+  kind: string;
+  items: MCPServerItem[];
+  metadata?: {
+    continue?: string;
+    resourceVersion?: string;
+  };
+}
+
+export async function getMcpServerList(queryParams?: Record<string, any>): Promise<K8sResponse> {
+  try {
+    const queryString = queryParams 
+      ? '?' + new URLSearchParams(queryParams).toString()
+      : '';
+    
+    const response = await fetch(`${API_BASE_URL}/mcpserver${queryString}`, {
+      method: 'GET',
+      headers: {
+        'Cache-Control': 'no-cache',
+      },
+      credentials: 'include',
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to fetch MCP server list: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error('Error fetching MCP server list:', error);
+    throw error;
+  }
+}
