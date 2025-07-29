@@ -196,6 +196,55 @@ export async function startMCPServer(name: string, image: string) {
   }
 }
 
+export async function getMCPServers(): Promise<MCPServerResponse[]> {
+  try {
+    console.log('Fetching MCP servers list');
+
+    const response = await fetch(`${API_BASE_URL}/mcpserver`, {
+      method: 'GET',
+      headers: {
+        'Cache-Control': 'no-cache', // Prevent caching
+      },
+      credentials: 'include', // 包含 cookies
+    });
+
+    console.log(`Get MCP servers response status: ${response.status}`);
+
+    // Try to parse JSON response, but handle non-JSON responses
+    let data;
+    const contentType = response.headers.get('content-type');
+    if (contentType && contentType.includes('application/json')) {
+      data = await response.json();
+      console.log('Response data:', data);
+    } else {
+      const text = await response.text();
+      console.log('Response text:', text);
+      // Create a simple object for non-JSON responses
+      data = { message: text };
+    }
+
+    if (!response.ok) {
+      throw new Error(
+        data.message || `Failed to get MCP servers (${response.status})`,
+      );
+    }
+
+    // Handle both single object and array responses
+    const servers = Array.isArray(data) ? data : data.items || [];
+    console.log(`Retrieved ${servers.length} MCP servers`);
+    
+    return servers;
+  } catch (error) {
+    console.error('Failed to get MCP servers:', error);
+    // Re-throw with a more descriptive message
+    if (error instanceof Error) {
+      throw new Error(`Failed to get MCP servers: ${error.message}`);
+    } else {
+      throw new Error('Failed to get MCP servers due to an unknown error');
+    }
+  }
+}
+
 interface MCPServerResponse {
   apiVersion: string;
   kind: string;
