@@ -18,7 +18,11 @@ export class AuthService {
   /**
    * 创建会话Cookie
    */
-  async createSession(user: User, response: Response): Promise<void> {
+  createSession(
+    user: User,
+    response: Response,
+    request?: { headers?: { origin?: string; referer?: string } },
+  ): void {
     const payload: SessionPayload = {
       userId: user.user_id,
       username: user.username,
@@ -30,13 +34,28 @@ export class AuthService {
       expiresIn: '7d', // 7天过期
     });
 
-    // 设置HTTP-only Cookie - 简化配置，支持 netlify.app 和 localhost
+    // 检测请求来源，决定cookie安全设置
     const isProduction = process.env.NODE_ENV === 'production';
+    const origin = request?.headers?.origin || '';
+    const referer = request?.headers?.referer || '';
+
+    // 如果请求来自localhost或127.0.0.1，即使在生产环境也不使用secure
+    const isFromLocalhost =
+      origin.includes('localhost') ||
+      origin.includes('127.0.0.1') ||
+      referer.includes('localhost') ||
+      referer.includes('127.0.0.1');
+
+    const shouldBeSecure = isProduction && !isFromLocalhost;
+
+    console.log(
+      `🍪 Setting cookie - Production: ${isProduction}, Origin: ${origin}, Secure: ${shouldBeSecure}`,
+    );
 
     response.cookie('auth-session', token, {
       httpOnly: true,
-      secure: isProduction, // 生产环境启用 secure
-      sameSite: isProduction ? 'none' : 'lax', // 生产环境用 none 支持跨域，开发环境用 lax
+      secure: shouldBeSecure, // 智能决定是否使用secure
+      sameSite: shouldBeSecure ? 'none' : 'lax', // 跨域时用none，本地用lax
       maxAge: 7 * 24 * 60 * 60 * 1000, // 7天
       path: '/',
     });
@@ -49,7 +68,7 @@ export class AuthService {
     try {
       const payload = this.jwtService.verify<SessionPayload>(token);
       return payload;
-    } catch (error) {
+    } catch {
       return null;
     }
   }
@@ -57,13 +76,27 @@ export class AuthService {
   /**
    * 清除会话Cookie
    */
-  clearSession(response: Response): void {
+  clearSession(
+    response: Response,
+    request?: { headers?: { origin?: string; referer?: string } },
+  ): void {
     const isProduction = process.env.NODE_ENV === 'production';
+    const origin = request?.headers?.origin || '';
+    const referer = request?.headers?.referer || '';
+
+    // 如果请求来自localhost或127.0.0.1，即使在生产环境也不使用secure
+    const isFromLocalhost =
+      origin.includes('localhost') ||
+      origin.includes('127.0.0.1') ||
+      referer.includes('localhost') ||
+      referer.includes('127.0.0.1');
+
+    const shouldBeSecure = isProduction && !isFromLocalhost;
 
     response.clearCookie('auth-session', {
       httpOnly: true,
-      secure: isProduction,
-      sameSite: isProduction ? 'none' : 'lax',
+      secure: shouldBeSecure,
+      sameSite: shouldBeSecure ? 'none' : 'lax',
       path: '/',
     });
   }
@@ -91,7 +124,7 @@ export class AuthService {
     const cookies: Record<string, string> = {};
     if (!cookieHeader) return cookies;
 
-    cookieHeader.split(';').forEach(cookie => {
+    cookieHeader.split(';').forEach((cookie) => {
       const [name, ...rest] = cookie.trim().split('=');
       if (name && rest.length > 0) {
         cookies[name] = rest.join('=');

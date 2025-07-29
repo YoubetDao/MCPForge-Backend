@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ConflictException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { User } from './entities/user.entity';
@@ -10,7 +14,10 @@ import { ConfigService } from '@nestjs/config';
 import { HttpService } from '@nestjs/axios';
 import { firstValueFrom } from 'rxjs';
 import { ethers } from 'ethers';
-import { Web3ChallengeDto, Web3ChallengeResponseDto } from './dto/web3-challenge.dto';
+import {
+  Web3ChallengeDto,
+  Web3ChallengeResponseDto,
+} from './dto/web3-challenge.dto';
 import { Web3AuthDto } from './dto/web3-auth.dto';
 import { BadRequestException, UnauthorizedException } from '@nestjs/common';
 import { UserRole } from './entities/user.entity';
@@ -211,24 +218,27 @@ export class UserService {
 
   getGitHubAuthUrl(redirectUri?: string) {
     const clientId = this.configService.get('GITHUB_CLIENT_ID');
-    const callbackUrl = redirectUri || this.configService.get('GITHUB_CALLBACK_URL');
-    
+    const callbackUrl =
+      redirectUri || this.configService.get('GITHUB_CALLBACK_URL');
+
     return `https://github.com/login/oauth/authorize?client_id=${clientId}&redirect_uri=${callbackUrl}&scope=user:email`;
   }
 
   // Web3 认证方法
-  async generateWeb3Challenge(address: string): Promise<Web3ChallengeResponseDto> {
+  async generateWeb3Challenge(
+    address: string,
+  ): Promise<Web3ChallengeResponseDto> {
     const normalizedAddress = address.toLowerCase();
     const timestamp = new Date().toISOString();
     const randomId = Math.random().toString(36).substring(2, 15);
     const nonce = `Login to MCPForge at ${timestamp} with nonce: ${randomId}`;
     const expires = new Date(Date.now() + 5 * 60 * 1000); // 5分钟过期
-    
+
     this.nonceStore.set(normalizedAddress, { nonce, expires });
-    
+
     return {
       nonce,
-      expires_at: expires.toISOString()
+      expires_at: expires.toISOString(),
     };
   }
 
@@ -240,71 +250,76 @@ export class UserService {
     message: string;
   }> {
     const address = web3AuthDto.address.toLowerCase();
-    
+
     // 1. 验证 nonce（使用传入的 nonce 而不是存储的）
     const storedChallenge = this.nonceStore.get(address);
     if (!storedChallenge || storedChallenge.expires < new Date()) {
       throw new UnauthorizedException('Invalid or expired nonce');
     }
-    
+
     // 验证传入的 nonce 是否与存储的匹配
     if (storedChallenge.nonce !== web3AuthDto.nonce) {
       throw new UnauthorizedException('Nonce mismatch');
     }
-    
+
     // 2. 验证签名
     const isValidSignature = this.verifySignature(
-      web3AuthDto.nonce,  // 使用传入的 nonce
+      web3AuthDto.nonce, // 使用传入的 nonce
       web3AuthDto.signature,
-      web3AuthDto.address
+      web3AuthDto.address,
     );
-    
+
     if (!isValidSignature) {
       throw new UnauthorizedException('Invalid signature');
     }
-    
+
     // 3. 清除使用过的 nonce
     this.nonceStore.delete(address);
-    
+
     // 4. 查找或创建用户
     let user = await this.findByAuthMethod(AuthType.WEB3, web3AuthDto.address);
     let action: 'login' | 'register';
-    
+
     if (!user) {
       // 新用户注册
       if (!web3AuthDto.username) {
         // throw new BadRequestException('Username is required for new users');
         web3AuthDto.username = address;
       }
-      
+
       const createUserDto: CreateUserDto = {
         username: web3AuthDto.username,
         email: web3AuthDto.email,
-        role: web3AuthDto.role || UserRole.USER,  // ✅ 安全的默认值
+        role: web3AuthDto.role || UserRole.USER, // ✅ 安全的默认值
         reward_address: web3AuthDto.reward_address,
         auth_type: AuthType.WEB3,
         auth_identifier: web3AuthDto.address,
       };
-      
+
       user = await this.create(createUserDto);
       action = 'register';
     } else {
       action = 'login';
     }
-    
+
     const userWithMethods = await this.findOne(user.user_id);
-    
+
     return {
       success: true,
       action,
       user: userWithMethods,
-      message: action === 'login' 
-        ? 'Web3 authentication successful'
-        : 'User registered and authenticated successfully'
+      message:
+        action === 'login'
+          ? 'Web3 authentication successful'
+          : 'User registered and authenticated successfully',
     };
   }
 
-  private verifySignature(message: string, signature: string, address: string): boolean {
+  private verifySignature(
+    message: string,
+    signature: string,
+    address: string,
+  ): boolean {
     try {
       const recoveredAddress = ethers.verifyMessage(message, signature);
       return recoveredAddress.toLowerCase() === address.toLowerCase();
@@ -318,42 +333,42 @@ export class UserService {
     const user = await this.userRepository.findOne({
       where: { user_id: userId },
     });
-  
+
     if (!user) {
       throw new NotFoundException(`User with ID ${userId} not found`);
     }
-  
+
     // 只更新提供的字段
     const fieldsToUpdate: Partial<User> = {};
-    
+
     if (updateUserDto.username !== undefined) {
       // 检查用户名是否已被其他用户使用
       const existingUser = await this.userRepository.findOne({
         where: { username: updateUserDto.username },
       });
-      
+
       if (existingUser && existingUser.user_id !== userId) {
         throw new ConflictException('Username already exists');
       }
-      
+
       fieldsToUpdate.username = updateUserDto.username;
     }
-    
+
     if (updateUserDto.email !== undefined) {
       fieldsToUpdate.email = updateUserDto.email;
     }
-    
+
     if (updateUserDto.role !== undefined) {
       fieldsToUpdate.role = updateUserDto.role;
     }
-    
+
     if (updateUserDto.reward_address !== undefined) {
       fieldsToUpdate.reward_address = updateUserDto.reward_address;
     }
-  
+
     // 执行更新
     await this.userRepository.update(userId, fieldsToUpdate);
-  
+
     // 返回更新后的用户信息
     return this.findOne(userId);
   }

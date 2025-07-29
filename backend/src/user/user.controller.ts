@@ -9,6 +9,7 @@ import {
   Query,
   ParseIntPipe,
   Res,
+  Req,
   HttpException,
   HttpStatus,
   ValidationPipe,
@@ -16,6 +17,7 @@ import {
   Put,
   UseGuards,
 } from '@nestjs/common';
+import { Request } from 'express';
 import { UserService } from './user.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { BindAuthMethodDto } from './dto/bind-auth-method.dto';
@@ -50,7 +52,10 @@ export class UserController {
 
   @Post()
   @UseGuards(CookieAuthGuard)
-  create(@Body() createUserDto: CreateUserDto, @CurrentUser() user: SessionPayload) {
+  create(
+    @Body() createUserDto: CreateUserDto,
+    @CurrentUser() user: SessionPayload,
+  ) {
     return this.userService.create(createUserDto);
   }
 
@@ -64,17 +69,20 @@ export class UserController {
   @Get('by-auth')
   @UseGuards(CookieAuthGuard)
   @UsePipes(new ValidationPipe({ transform: true, whitelist: true }))
-  async findByAuthMethod(@Query() findByAuthDto: FindByAuthDto, @CurrentUser() user: SessionPayload) {
+  async findByAuthMethod(
+    @Query() findByAuthDto: FindByAuthDto,
+    @CurrentUser() user: SessionPayload,
+  ) {
     try {
       const user = await this.userService.findByAuthMethod(
         findByAuthDto.auth_type,
-        findByAuthDto.auth_identifier
+        findByAuthDto.auth_identifier,
       );
-      
+
       if (!user) {
         throw new HttpException('User not found', HttpStatus.NOT_FOUND);
       }
-      
+
       return user;
     } catch (error) {
       if (error instanceof HttpException) {
@@ -82,14 +90,17 @@ export class UserController {
       }
       throw new HttpException(
         'Internal server error',
-        HttpStatus.INTERNAL_SERVER_ERROR
+        HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
   }
 
   @Get(':id')
   @UseGuards(CookieAuthGuard)
-  async findOne(@Param('id', ParseIntPipe) id: number, @CurrentUser() user: SessionPayload) {
+  async findOne(
+    @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() user: SessionPayload,
+  ) {
     try {
       return await this.userService.findOne(id);
     } catch (error) {
@@ -98,14 +109,18 @@ export class UserController {
       }
       throw new HttpException(
         'Internal server error',
-        HttpStatus.INTERNAL_SERVER_ERROR
+        HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
   }
 
   @Put(':id')
   @UseGuards(CookieAuthGuard)
-  async updateUser(@Param('id', ParseIntPipe) id: number, @Body() updateUserDto: UpdateUserDto, @CurrentUser() user: SessionPayload) {
+  async updateUser(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() updateUserDto: UpdateUserDto,
+    @CurrentUser() user: SessionPayload,
+  ) {
     try {
       // 直接传递 id 和 updateUserDto，不需要设置 user_id
       return await this.userService.updateUser(id, updateUserDto);
@@ -115,12 +130,10 @@ export class UserController {
       }
       throw new HttpException(
         'Internal server error',
-        HttpStatus.INTERNAL_SERVER_ERROR
+        HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
   }
-
-
 
   @Post(':id/bind-auth')
   @UseGuards(CookieAuthGuard)
@@ -137,14 +150,17 @@ export class UserController {
       }
       throw new HttpException(
         'Internal server error',
-        HttpStatus.INTERNAL_SERVER_ERROR
+        HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
   }
 
   @Delete(':id')
   @UseGuards(CookieAuthGuard)
-  async remove(@Param('id', ParseIntPipe) id: number, @CurrentUser() user: SessionPayload) {
+  async remove(
+    @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() user: SessionPayload,
+  ) {
     try {
       await this.userService.remove(id);
       return { message: 'User deleted successfully' };
@@ -154,7 +170,7 @@ export class UserController {
       }
       throw new HttpException(
         'Internal server error',
-        HttpStatus.INTERNAL_SERVER_ERROR
+        HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
   }
@@ -168,29 +184,43 @@ export class UserController {
     } catch (error) {
       throw new HttpException(
         'Failed to generate GitHub auth URL',
-        HttpStatus.INTERNAL_SERVER_ERROR
+        HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
   }
 
   @Get('auth/github/callback')
-  async githubCallback(@Query() gitHubAuthDto: GitHubAuthDto, @Res() res: Response) {
+  async githubCallback(
+    @Query() gitHubAuthDto: GitHubAuthDto,
+    @Res() res: Response,
+    @Req() req: Request,
+  ) {
     try {
       if (!gitHubAuthDto.code) {
-        throw new HttpException('No authorization code provided', HttpStatus.BAD_REQUEST);
+        throw new HttpException(
+          'No authorization code provided',
+          HttpStatus.BAD_REQUEST,
+        );
       }
 
       const user = await this.userService.handleGitHubCallback(gitHubAuthDto);
 
       // 设置认证Cookie
-      await this.authService.createSession(user, res);
+      this.authService.createSession(user, res, req);
 
       const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
-      res.redirect(`${frontendUrl}/auth/callback?user_id=${user.user_id}&success=true`);
+      res.redirect(
+        `${frontendUrl}/auth/callback?user_id=${user.user_id}&success=true`,
+      );
     } catch (error) {
       const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
-      const errorMessage = error instanceof HttpException ? error.message : 'GitHub authentication failed';
-      res.redirect(`${frontendUrl}/auth/callback?error=${encodeURIComponent(errorMessage)}`);
+      const errorMessage =
+        error instanceof HttpException
+          ? error.message
+          : 'GitHub authentication failed';
+      res.redirect(
+        `${frontendUrl}/auth/callback?error=${encodeURIComponent(errorMessage)}`,
+      );
     }
   }
 
@@ -198,16 +228,20 @@ export class UserController {
   async githubCallbackPost(
     @Body() gitHubAuthDto: GitHubAuthDto,
     @Res({ passthrough: true }) response: Response,
+    @Req() request: Request,
   ) {
     if (!gitHubAuthDto.code) {
-      throw new HttpException('No authorization code provided', HttpStatus.BAD_REQUEST);
+      throw new HttpException(
+        'No authorization code provided',
+        HttpStatus.BAD_REQUEST,
+      );
     }
 
     try {
       const user = await this.userService.handleGitHubCallback(gitHubAuthDto);
 
       // 设置认证Cookie
-      await this.authService.createSession(user, response);
+      this.authService.createSession(user, response, request);
 
       // 生成Bearer Token用于API测试
       const bearerToken = await this.authService.generateBearerToken(user);
@@ -219,20 +253,24 @@ export class UserController {
         bearer_token: bearerToken, // 添加Bearer Token
       };
     } catch (error) {
-      const errorMessage = error instanceof HttpException ? error.message : 'GitHub authentication failed';
-      throw new HttpException(
-        errorMessage,
-        HttpStatus.UNAUTHORIZED,
-      );
+      const errorMessage =
+        error instanceof HttpException
+          ? error.message
+          : 'GitHub authentication failed';
+      throw new HttpException(errorMessage, HttpStatus.UNAUTHORIZED);
     }
   }
 
   // 登出接口
   @Post('auth/logout')
   @UseGuards(CookieAuthGuard)
-  async logout(@Res({ passthrough: true }) response: Response, @CurrentUser() user: SessionPayload) {
+  async logout(
+    @Res({ passthrough: true }) response: Response,
+    @CurrentUser() user: SessionPayload,
+    @Req() request: Request,
+  ) {
     // 清除认证Cookie
-    this.authService.clearSession(response);
+    this.authService.clearSession(response, request);
 
     return {
       success: true,
@@ -245,11 +283,13 @@ export class UserController {
   @UsePipes(new ValidationPipe({ transform: true, whitelist: true }))
   async getWeb3Challenge(@Query() web3ChallengeDto: Web3ChallengeDto) {
     try {
-      return await this.userService.generateWeb3Challenge(web3ChallengeDto.address);
+      return await this.userService.generateWeb3Challenge(
+        web3ChallengeDto.address,
+      );
     } catch (error) {
       throw new HttpException(
         'Failed to generate Web3 challenge',
-        HttpStatus.INTERNAL_SERVER_ERROR
+        HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
   }
@@ -259,15 +299,18 @@ export class UserController {
   async verifyWeb3Auth(
     @Body() web3AuthDto: Web3AuthDto,
     @Res({ passthrough: true }) response: Response,
+    @Req() request: Request,
   ) {
     try {
       const result = await this.userService.verifyWeb3Auth(web3AuthDto);
 
       // 设置认证Cookie
-      await this.authService.createSession(result.user, response);
+      this.authService.createSession(result.user, response, request);
 
       // 生成Bearer Token用于API测试
-      const bearerToken = await this.authService.generateBearerToken(result.user);
+      const bearerToken = await this.authService.generateBearerToken(
+        result.user,
+      );
 
       return {
         success: true,
@@ -277,10 +320,15 @@ export class UserController {
         bearer_token: bearerToken, // 添加Bearer Token
       };
     } catch (error) {
-      const errorMessage = error instanceof HttpException ? error.message : 'Web3 authentication failed';
+      const errorMessage =
+        error instanceof HttpException
+          ? error.message
+          : 'Web3 authentication failed';
       throw new HttpException(
         errorMessage,
-        error instanceof HttpException ? error.getStatus() : HttpStatus.UNAUTHORIZED,
+        error instanceof HttpException
+          ? error.getStatus()
+          : HttpStatus.UNAUTHORIZED,
       );
     }
   }

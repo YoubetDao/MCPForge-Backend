@@ -17,7 +17,7 @@ import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { SessionPayload } from '../auth/auth.service';
 
 @Controller('mcpserver')
-@UseGuards(CookieAuthGuard)
+// @UseGuards(CookieAuthGuard)
 export class McpServerController {
   constructor(private readonly McpServerService: McpServerService) {}
 
