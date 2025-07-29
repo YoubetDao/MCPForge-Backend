@@ -92,7 +92,7 @@ function ChatPageContent() {
     {
       id: "welcome",
       role: "assistant",
-      content: "Welcome to MCPForge Chat! I'm your AI assistant powered by OpenAI. You can ask me questions or use MCP tools to enhance your experience. What would you like to do today?",
+      content: "Welcome to MCPForge Chat! I'm your AI assistant powered by SiliconFlow. You can ask me questions or use MCP tools to enhance your experience. What would you like to do today?",
       timestamp: new Date(),
     }
   ])
@@ -121,8 +121,8 @@ function ChatPageContent() {
         ? availableTools.filter(tool => selectedTools.includes(tool.name))
         : availableTools // 如果没有选择特定工具，发送所有可用工具
 
-      // 调用OpenAI API
-      const response = await ChatAPI.sendMessageWithTools(messagesToSend, toolsToSend)
+      // 调用SiliconFlow API
+      const response = await ChatAPI.sendMessageWithTools(messagesToSend, toolsToSend, 'siliconflow')
       
       // 创建AI回复消息
       const aiMessage: Message = {
@@ -142,7 +142,7 @@ function ChatPageContent() {
       const errorMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: "assistant",
-        content: `Sorry, I encountered an error: ${error instanceof Error ? error.message : 'Unknown error'}. Please check your OpenAI API key configuration.`,
+        content: `Sorry, I encountered an error: ${error instanceof Error ? error.message : 'Unknown error'}. Please check your SiliconFlow API key configuration.`,
         timestamp: new Date(),
       }
       

@@ -32,8 +32,8 @@ export class ChatAPI {
     return response.json()
   }
 
-  static async sendMessage(messages: Message[], tools?: any[]): Promise<ChatAPIResponse> {
-    return this.makeRequest("openai", { messages, tools })
+  static async sendMessage(messages: Message[], tools?: any[], provider: 'openai' | 'siliconflow' = 'siliconflow'): Promise<ChatAPIResponse> {
+    return this.makeRequest(provider, { messages, tools })
   }
 
   static async executeTools(toolCalls: ToolCall[]): Promise<ToolExecutionResponse> {
@@ -42,10 +42,11 @@ export class ChatAPI {
 
   static async sendMessageWithTools(
     messages: Message[], 
-    tools?: any[]
+    tools?: any[],
+    provider: 'openai' | 'siliconflow' = 'siliconflow'
   ): Promise<{ content: string; toolResults?: ToolResult[] }> {
-    // 首先发送消息给OpenAI
-    const response = await this.sendMessage(messages, tools)
+    // 首先发送消息给AI服务
+    const response = await this.sendMessage(messages, tools, provider)
     
     // 如果有工具调用，执行工具
     if (response.toolCalls && response.toolCalls.length > 0) {
