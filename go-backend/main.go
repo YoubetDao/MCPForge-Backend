@@ -5,12 +5,20 @@ import (
 	"log"
 
 	"github.com/YoubetDao/MCPForge-Backend/go-backend/internal/config"
+	"github.com/YoubetDao/MCPForge-Backend/go-backend/internal/middleware"
 	"github.com/gofiber/fiber/v3"
 )
 
 func main() {
 	// Initialize a new Fiber app
 	app := fiber.New()
+
+	app.Use(
+		// Middleware
+		middleware.AuthMiddleware(
+			config.Load(),
+		),
+	)
 
 	// Define a route for the GET method on the root path '/'
 	app.Get("/", func(c fiber.Ctx) error {

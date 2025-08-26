@@ -1,9 +1,11 @@
 package middleware
 
 import (
-	"github.com/gofiber/fiber/v3"
+	"strings"
+
 	"github.com/YoubetDao/MCPForge-Backend/go-backend/internal/config"
 	"github.com/YoubetDao/MCPForge-Backend/go-backend/pkg/utils"
+	"github.com/gofiber/fiber/v3"
 )
 
 type AuthContextKey string
@@ -16,6 +18,10 @@ func AuthMiddleware(cfg *config.Config) fiber.Handler {
 	jwtUtil := utils.NewJWTUtil(cfg)
 	
 	return func(c fiber.Ctx) error {
+		// if path is get nonce or verify, then skip
+		if strings.Contains(c.Path(), "/auth/web3") {
+			return c.Next()
+		}
 		// 从cookie中获取token
 		token := c.Cookies("auth_token")
 		if token == "" {
