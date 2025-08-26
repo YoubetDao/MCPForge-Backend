@@ -9,15 +9,16 @@ import (
 )
 
 type Config struct {
-	ServerPort string
-	Env        string
-	DBHost     string
-	DBPort     string
-	DBUser     string
-	DBPassword string
-	DBName     string
-	JWTSecret  string
-	LogLevel   string
+	ServerPort     string
+	Env            string
+	DBHost         string
+	DBPort         string
+	DBUser         string
+	DBPassword     string
+	DBName         string
+	JWTSecret      string
+	JWTExpiresIn   int
+	LogLevel       string
 }
 
 func Load() *Config {
@@ -26,15 +27,16 @@ func Load() *Config {
 	}
 
 	return &Config{
-		ServerPort: getEnv("PORT", "8443"),
-		Env:        getEnv("ENV", "development"),
-		DBHost:     getEnv("DB_HOST", "localhost"),
-		DBPort:     getEnv("DB_PORT", "5432"),
-		DBUser:     getEnv("DB_USER", ""),
-		DBPassword: getEnv("DB_PASSWORD", ""),
-		DBName:     getEnv("DB_NAME", ""),
-		JWTSecret:  getEnv("JWT_SECRET", "your-secret-key"),
-		LogLevel:   getEnv("LOG_LEVEL", "info"),
+		ServerPort:   getEnv("PORT", "8443"),
+		Env:          getEnv("ENV", "development"),
+		DBHost:       getEnv("DB_HOST", "localhost"),
+		DBPort:       getEnv("DB_PORT", "5432"),
+		DBUser:       getEnv("DB_USER", ""),
+		DBPassword:   getEnv("DB_PASSWORD", ""),
+		DBName:       getEnv("DB_NAME", ""),
+		JWTSecret:    getEnv("JWT_SECRET", "your-secret-key"),
+		JWTExpiresIn: getEnvInt("JWT_EXPIRES_IN", 24),
+		LogLevel:     getEnv("LOG_LEVEL", "info"),
 	}
 }
 

@@ -1,6 +1,8 @@
 package handlers
 
 import (
+	"time"
+	
 	"github.com/gofiber/fiber/v3"
 	"github.com/YoubetDao/MCPForge-Backend/go-backend/internal/config"
 	"github.com/YoubetDao/MCPForge-Backend/go-backend/internal/models"
@@ -75,6 +77,25 @@ func (h *Web3Handler) VerifyWeb3Auth(c fiber.Ctx) error {
 		h.logger.Error("Web3 auth verification failed", "error", err.Error(), "address", req.Address)
 		return utils.ErrorResponse(c, fiber.StatusUnauthorized, err.Error())
 	}
+
+	// 生成JWT令牌
+	jwtUtil := utils.NewJWTUtil(h.config)
+	token, err := jwtUtil.GenerateToken(response.User.UserID, response.User.Username, string(response.User.Role))
+	if err != nil {
+		h.logger.Error("Failed to generate JWT token", "error", err.Error(), "user_id", response.User.UserID)
+		return utils.ErrorResponse(c, fiber.StatusInternalServerError, "Failed to generate authentication token")
+	}
+
+	// 设置HttpOnly cookie
+	c.Cookie(&fiber.Cookie{
+		Name:     "auth_token",
+		Value:    token,
+		Expires:  time.Now().Add(time.Duration(h.config.JWTExpiresIn) * time.Hour),
+		HTTPOnly: true,
+		Secure:   h.config.Env == "production",
+		SameSite: "lax",
+		Path:     "/",
+	})
 
 	h.logger.Info("Web3 auth verification successful", 
 		"address", req.Address, 

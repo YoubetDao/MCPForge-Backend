@@ -35,10 +35,11 @@ func New(cfg *config.Config, l *logger.Logger) *App {
 func (a *App) SetupMiddleware() {
 	a.Use(recover.New())
 	a.Use(cors.New(cors.Config{
-		AllowOrigins: []string{"*"},
-		AllowMethods: []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
-		AllowHeaders: []string{"Content-Type", "Authorization"},
-		MaxAge:       86400,
+		AllowOrigins:     []string{"*"},
+		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+		AllowHeaders:     []string{"Content-Type", "Authorization"},
+		AllowCredentials: true,
+		MaxAge:           86400,
 	}))
 	a.Use(a.logger.Middleware())
 }
