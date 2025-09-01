@@ -54,6 +54,7 @@ export class McpServerController {
       envs,
       labels,
       annotations,
+      user,
     );
   }
 

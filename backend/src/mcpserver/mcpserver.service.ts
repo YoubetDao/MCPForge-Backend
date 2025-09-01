@@ -269,6 +269,7 @@ export class McpServerService {
     envs: object = {},
     labels: object = {},
     annotations: object = {},
+    user: any,
   ) {
     console.log('createMcpServer', name, image, envs, labels, annotations);
 
@@ -284,6 +285,14 @@ export class McpServerService {
       };
     }
     let memory = name === 'wikipedia-mcp' ? '1Gi' : '2Gi';
+
+    if (user) {
+      labels['user'] = `${user.userId}`;
+      annotations['username'] = user.username;
+    }
+
+
+
     try {
       const url = `${this.K8S_API_HOST}/apis/${this.K8S_API_GROUP}/${this.K8S_API_VERSION}/namespaces/${this.K8S_NAMESPACE}/${this.K8S_RESOURCE}`;
       const envArray = Object.entries(envs).map(([key, value]) => ({
