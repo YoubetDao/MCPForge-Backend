@@ -168,13 +168,19 @@ export class McpServerService {
     });
   }
 
-  async getMcpServerList(queryParams: ParsedQs) {
+  async getMcpServerList(queryParams: ParsedQs, user?: any) {
     try {
       // 尝试使用直接的HTTPS请求
       // convert queryParams to labelSelector
-      const labelSelector = Object.entries(queryParams)
-        .map(([key, value]) => `${key}=${value}`)
-        .join(',');
+      let labelSelectors = Object.entries(queryParams)
+        .map(([key, value]) => `${key}=${value}`);
+      
+      // 添加用户ID过滤
+      if (user?.userId) {
+        labelSelectors.push(`user=${user.userId}`);
+      }
+      
+      const labelSelector = labelSelectors.join(',');
       console.log('labelSelector value as:', labelSelector);
       const url = `${this.K8S_API_HOST}/apis/${this.K8S_API_GROUP}/${this.K8S_API_VERSION}/namespaces/${this.K8S_NAMESPACE}/${this.K8S_RESOURCE}?limit=500&labelSelector=${labelSelector}`;
       try {
@@ -269,12 +275,24 @@ export class McpServerService {
     envs: object = {},
     labels: object = {},
     annotations: object = {},
+    user: any,
   ) {
     console.log('createMcpServer', name, image, envs, labels, annotations);
 
     envs = envs || {};
     labels = labels || {};
     annotations = annotations || {};
+    
+    // 生成唯一资源名称：原始名称 + 用户ID + 随机数字
+    let resourceName = name;
+    if (user?.userId) {
+      const randomNum = Math.floor(Math.random() * 10000); // 4位随机数
+      resourceName = `${name}-${user.userId}-${randomNum}`.toLowerCase()
+        .replace(/[^a-z0-9-]/g, '-') // 替换非法字符为连字符
+        .replace(/-+/g, '-')         // 合并多个连字符
+        .substring(0, 63);           // 限制长度
+      annotations['original-name'] = name; // 保留原始名称
+    }
 
     if (name === 'mcp4meme') {
       envs = {
@@ -284,6 +302,14 @@ export class McpServerService {
       };
     }
     let memory = name === 'wikipedia-mcp' ? '1Gi' : '2Gi';
+
+    if (user) {
+      labels['user'] = `${user.userId}`;
+      annotations['username'] = user.username;
+    }
+
+
+
     try {
       const url = `${this.K8S_API_HOST}/apis/${this.K8S_API_GROUP}/${this.K8S_API_VERSION}/namespaces/${this.K8S_NAMESPACE}/${this.K8S_RESOURCE}`;
       const envArray = Object.entries(envs).map(([key, value]) => ({
@@ -294,7 +320,7 @@ export class McpServerService {
         apiVersion: `${this.K8S_API_GROUP}/${this.K8S_API_VERSION}`,
         kind: 'MCPServer',
         metadata: {
-          name,
+          name: resourceName,
           namespace: this.K8S_NAMESPACE,
           labels,
           annotations,

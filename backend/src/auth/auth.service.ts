@@ -46,16 +46,17 @@ export class AuthService {
       referer.includes('localhost') ||
       referer.includes('127.0.0.1');
 
-    const shouldBeSecure = isProduction && !isFromLocalhost;
+    // const shouldBeSecure = isProduction && !isFromLocalhost;
+    // const shouldBeSecure = false
 
     console.log(
-      `🍪 Setting cookie - Production: ${isProduction}, Origin: ${origin}, Secure: ${shouldBeSecure}`,
+      `🍪 Setting cookie - Production: ${isProduction}, Origin: ${origin}, Secure: ${false}`,
     );
 
     response.cookie('auth-session', token, {
-      httpOnly: true,
-      secure: shouldBeSecure, // 智能决定是否使用secure
-      sameSite: shouldBeSecure ? 'none' : 'lax', // 跨域时用none，本地用lax
+      httpOnly: false,
+      secure: false, // 智能决定是否使用secure
+      sameSite: "none", // 跨域时用none，本地用lax
       maxAge: 7 * 24 * 60 * 60 * 1000, // 7天
       path: '/',
     });
