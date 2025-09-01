@@ -168,13 +168,19 @@ export class McpServerService {
     });
   }
 
-  async getMcpServerList(queryParams: ParsedQs) {
+  async getMcpServerList(queryParams: ParsedQs, user?: any) {
     try {
       // 尝试使用直接的HTTPS请求
       // convert queryParams to labelSelector
-      const labelSelector = Object.entries(queryParams)
-        .map(([key, value]) => `${key}=${value}`)
-        .join(',');
+      let labelSelectors = Object.entries(queryParams)
+        .map(([key, value]) => `${key}=${value}`);
+      
+      // 添加用户ID过滤
+      if (user?.userId) {
+        labelSelectors.push(`user=${user.userId}`);
+      }
+      
+      const labelSelector = labelSelectors.join(',');
       console.log('labelSelector value as:', labelSelector);
       const url = `${this.K8S_API_HOST}/apis/${this.K8S_API_GROUP}/${this.K8S_API_VERSION}/namespaces/${this.K8S_NAMESPACE}/${this.K8S_RESOURCE}?limit=500&labelSelector=${labelSelector}`;
       try {

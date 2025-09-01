@@ -36,7 +36,7 @@ export class McpServerController {
   ): Promise<K8sResponse> {
     // any query params
     const queryParams = req.query;
-    return this.McpServerService.getMcpServerList(queryParams);
+    return this.McpServerService.getMcpServerList(queryParams, user);
   }
 
   @Post()
