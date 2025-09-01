@@ -282,6 +282,17 @@ export class McpServerService {
     envs = envs || {};
     labels = labels || {};
     annotations = annotations || {};
+    
+    // 生成唯一资源名称：原始名称 + 用户ID + 随机数字
+    let resourceName = name;
+    if (user?.userId) {
+      const randomNum = Math.floor(Math.random() * 10000); // 4位随机数
+      resourceName = `${name}-${user.userId}-${randomNum}`.toLowerCase()
+        .replace(/[^a-z0-9-]/g, '-') // 替换非法字符为连字符
+        .replace(/-+/g, '-')         // 合并多个连字符
+        .substring(0, 63);           // 限制长度
+      annotations['original-name'] = name; // 保留原始名称
+    }
 
     if (name === 'mcp4meme') {
       envs = {
@@ -309,7 +320,7 @@ export class McpServerService {
         apiVersion: `${this.K8S_API_GROUP}/${this.K8S_API_VERSION}`,
         kind: 'MCPServer',
         metadata: {
-          name,
+          name: resourceName,
           namespace: this.K8S_NAMESPACE,
           labels,
           annotations,
